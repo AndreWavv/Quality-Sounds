@@ -122,26 +122,44 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 760px) { .nav-links { display: none; } }
 
 /* ============ SINE-WAVE WORD TICKER ============ */
-/* Words scroll horizontally while bobbing up/down out of phase,
-   tracing a sine-wave silhouette instead of sitting in a flat bar. */
+/* A wavy line flows continuously behind the words, and the words bob
+   up and down as they scroll — together they read as a sine wave with
+   text riding along its crest, instead of a flat rectangular bar. */
 .ticker {
   position: relative;
   z-index: 1;
-  overflow-x: hidden;
-  overflow-y: visible;
+  overflow: hidden;
   white-space: nowrap;
-  padding: 34px 0;
+  padding: 46px 0;
+}
+
+.ticker::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='60' viewBox='0 0 140 60'%3E%3Cpath d='M0,30 Q35,4 70,30 T140,30' stroke='%236C8CFF' stroke-width='2' fill='none' opacity='0.55'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 140px 60px;
+  background-position: 0 center;
+  animation: wave-flow 3.4s linear infinite;
+  z-index: 0;
+}
+
+@keyframes wave-flow {
+  from { background-position-x: 0; }
+  to { background-position-x: -140px; }
 }
 
 .ticker-track {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   animation: scroll-wave var(--scroll-duration, 20s) linear infinite;
-  transform: translateX(var(--scroll-distance-start, 0));
 }
 
 @keyframes scroll-wave {
   from { transform: translateX(0); }
-  to { transform: translateX(var(--scroll-distance, -50%)); }
+  to { transform: translateX(-50%); }
 }
 
 .ticker-track span {
@@ -150,7 +168,7 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: 0.15em;
   text-transform: uppercase;
   padding: 0 28px;
-  color: var(--grey);
+  color: var(--white);
   display: inline-flex;
   align-items: center;
   gap: 28px;
@@ -160,8 +178,8 @@ a { color: inherit; text-decoration: none; }
 .ticker-track span::after { content: '◆'; font-size: 0.6rem; color: var(--purple-bright); }
 
 @keyframes bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-14px); }
+  0%, 100% { transform: translateY(6px); }
+  50% { transform: translateY(-18px); }
 }
 
 /* ============ BUTTONS ============ */
@@ -234,8 +252,8 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   padding: 130px 5vw;
   display: grid;
-  grid-template-columns: 0.85fr 1.15fr;
-  gap: 70px;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
   align-items: center;
 }
 
@@ -243,7 +261,7 @@ a { color: inherit; text-decoration: none; }
 .about-visual {
   aspect-ratio: 1/1;
   width: 100%;
-  max-width: 420px;
+  max-width: 560px;
   border-radius: 50%;
   background: linear-gradient(155deg, var(--charcoal-raised), var(--black));
   position: relative;
