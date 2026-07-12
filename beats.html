@@ -9,58 +9,70 @@
 </head>
 <body>
 
-<div class="grain"></div>
-
 <nav class="nav">
   <a href="index.html" class="nav-mark">ANDRE.WAV<span>QUALITY SOUNDS</span></a>
   <div class="nav-links">
     <a href="index.html">Home</a>
     <a href="beats.html" class="active">Beats</a>
     <a href="mixing-mastering.html">Mixing &amp; Mastering</a>
-    <a href="index.html#visual">Photo / Video</a>
+    <a href="index.html#about">About</a>
     <a href="mixing-mastering.html#contact">Contact</a>
   </div>
 </nav>
 
 <header class="page-head">
+  <div class="blob blob-blue" style="width:300px;height:300px;top:20%;right:10%;"></div>
   <div class="hero-eyebrow">Catalog</div>
   <h1>Beats</h1>
-  <p>Every beat below is available to preview and license instantly. Replace this list with your own catalog — each row is one track.</p>
+  <p>Every beat below is available to preview and license instantly. Replace this list with your own catalog — each card is one track.</p>
 </header>
 
-<section class="beat-list">
+<div class="filters">
+  <button class="pill active" data-filter="all">All</button>
+  <button class="pill" data-filter="trap">Trap</button>
+  <button class="pill" data-filter="rnb">R&amp;B</button>
+  <button class="pill" data-filter="lofi">Lo-fi</button>
+</div>
 
-  <div class="beat-row">
-    <button class="beat-play" data-audio="#" aria-label="Play preview">▶</button>
-    <div class="beat-info">
-      <h4>Track Title One</h4>
-      <span>140 BPM · F Minor</span>
+<section class="beat-grid" id="beat-grid">
+
+  <div class="beat-card" data-genre="trap">
+    <div class="beat-card-top">
+      <button class="beat-play" data-name="Track Title One" data-audio="#">▶</button>
+      <span class="beat-genre">Trap</span>
     </div>
-    <div class="beat-tags">Trap</div>
-    <div class="beat-price">$30+</div>
-    <a href="#" class="btn">License</a>
+    <h4>Track Title One</h4>
+    <span class="meta">140 BPM · F Minor</span>
+    <div class="beat-bottom">
+      <span class="price">$30+</span>
+      <a href="#" class="btn">License</a>
+    </div>
   </div>
 
-  <div class="beat-row">
-    <button class="beat-play" data-audio="#" aria-label="Play preview">▶</button>
-    <div class="beat-info">
-      <h4>Track Title Two</h4>
-      <span>92 BPM · C# Minor</span>
+  <div class="beat-card" data-genre="rnb">
+    <div class="beat-card-top">
+      <button class="beat-play" data-name="Track Title Two" data-audio="#">▶</button>
+      <span class="beat-genre">R&amp;B</span>
     </div>
-    <div class="beat-tags">R&amp;B</div>
-    <div class="beat-price">$30+</div>
-    <a href="#" class="btn">License</a>
+    <h4>Track Title Two</h4>
+    <span class="meta">92 BPM · C# Minor</span>
+    <div class="beat-bottom">
+      <span class="price">$30+</span>
+      <a href="#" class="btn">License</a>
+    </div>
   </div>
 
-  <div class="beat-row">
-    <button class="beat-play" data-audio="#" aria-label="Play preview">▶</button>
-    <div class="beat-info">
-      <h4>Track Title Three</h4>
-      <span>78 BPM · A Minor</span>
+  <div class="beat-card" data-genre="lofi">
+    <div class="beat-card-top">
+      <button class="beat-play" data-name="Track Title Three" data-audio="#">▶</button>
+      <span class="beat-genre">Lo-fi</span>
     </div>
-    <div class="beat-tags">Lo-fi</div>
-    <div class="beat-price">$30+</div>
-    <a href="#" class="btn">License</a>
+    <h4>Track Title Three</h4>
+    <span class="meta">78 BPM · A Minor</span>
+    <div class="beat-bottom">
+      <span class="price">$30+</span>
+      <a href="#" class="btn">License</a>
+    </div>
   </div>
 
 </section>
@@ -109,6 +121,12 @@
     <a href="mixing-mastering.html#contact">Contact</a>
   </div>
 </footer>
+
+<div class="floating-player" id="floating-player">
+  <div class="fp-bars"><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="fp-name" id="fp-name">Track Name</div>
+  <button class="fp-close" id="fp-close" aria-label="Stop preview">✕</button>
+</div>
 
 <script src="script.js"></script>
 </body>
