@@ -1,3 +1,21 @@
+// ===== Sine-wave ticker (Home + Mixing/Mastering pages) =====
+// Content in each .ticker-track is duplicated exactly once (two identical
+// copies of the word list) so that the default -50% scroll-distance loops
+// seamlessly with no blank gap. Here we just stagger each word's vertical
+// "bob" animation so the words ripple like a traveling sine wave instead of
+// all bouncing in sync.
+document.querySelectorAll('.ticker-track').forEach((track) => {
+  const spans = Array.from(track.children);
+  const wordsPerCopy = spans.length / 2; // two identical halves
+  const bobDuration = 1.7; // must match the CSS "bob" animation-duration
+
+  spans.forEach((span, i) => {
+    const phase = i % wordsPerCopy;
+    const delay = (phase / wordsPerCopy) * bobDuration;
+    span.style.setProperty('--bob-delay', `${delay.toFixed(2)}s`);
+  });
+});
+
 // ===== Genre filter pills (beats page) =====
 const pills = document.querySelectorAll('.pill');
 const beatCards = document.querySelectorAll('.beat-card');
