@@ -5,6 +5,18 @@
 // the original words enough times to comfortably exceed the container's
 // width, THEN duplicate that whole filled block once more so the -50% loop
 // has no gap at any screen size.
+//
+// These two constants must match the CSS: WAVELENGTH is the width of one
+// cycle of the background wave pattern (.ticker::before background-size),
+// and SPEED is the scroll speed used for --scroll-duration below. Keeping
+// both here in sync with the wave means a word's horizontal position maps
+// directly onto a point on the curve, so its "ride-wave" animation delay
+// can be set to exactly the phase of the curve at that point — the word
+// then travels along the curve rather than bouncing independently of it.
+const WAVELENGTH = 140; // px, matches .ticker::before background-size width
+const SPEED = 70; // px/second, matches .ticker::before wave-flow speed (140px / 2s)
+const RIDE_DURATION = WAVELENGTH / SPEED; // seconds for one full sine cycle
+
 function initTicker(tickerEl) {
   const track = tickerEl.querySelector('.ticker-track');
   if (!track) return;
@@ -31,20 +43,20 @@ function initTicker(tickerEl) {
   // between them is invisible.
   halfSpans.forEach((s) => track.appendChild(s.cloneNode(true)));
 
-  // Stagger each word's bob so the row ripples like a traveling wave
-  // instead of every word bouncing in sync.
-  const wordsPerHalf = halfSpans.length;
-  const bobDuration = 1.7; // must match the CSS "bob" animation-duration
-  Array.from(track.children).forEach((span, i) => {
-    const phase = i % wordsPerHalf;
-    const delay = (phase / wordsPerHalf) * bobDuration;
-    span.style.setProperty('--bob-delay', `${delay.toFixed(2)}s`);
+  // Give each word a negative animation-delay equal to how far "into" the
+  // wave cycle its starting x-position already is. A negative delay starts
+  // the animation already in progress at that phase, so at t=0 the word
+  // sits at the correct height for its position — and since the word and
+  // the wave move at the same speed, it stays locked to the curve forever.
+  Array.from(track.children).forEach((span) => {
+    const x = span.offsetLeft + span.offsetWidth / 2;
+    const phaseSeconds = (x % WAVELENGTH) / SPEED;
+    span.style.setProperty('--wave-delay', `-${phaseSeconds.toFixed(3)}s`);
   });
 
   // Keep scroll speed visually consistent regardless of how much content
-  // ended up in one half (roughly 70px per second).
-  const pxPerSecond = 70;
-  const duration = Math.max(8, halfWidth / pxPerSecond);
+  // ended up in one half, and matched to the same SPEED as the wave curve.
+  const duration = Math.max(4, halfWidth / SPEED);
   track.style.setProperty('--scroll-duration', `${duration.toFixed(1)}s`);
 }
 
