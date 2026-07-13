@@ -7,30 +7,24 @@
 // wave is a repeating shape by construction, and textLength forces both
 // halves of the (identical, duplicated) word string to exactly the same
 // rendered width, so the seam lines up perfectly at any screen size.
-const HALF_PERIOD = 90; // px, horizontal span of one hump
-const AMPLITUDE = 55; // px, vertical deviation from the centerline
-const BASE_Y = 100; // px, centerline of the wave within the SVG
-const SVG_HEIGHT = 200;
+const PERIOD = 180; // px, one full sine cycle
+const AMPLITUDE = 28; // px, true vertical peak (matches the wave size you approved before)
+const BASE_Y = 70; // px, centerline of the wave within the SVG
+const SVG_HEIGHT = 150;
 const SPEED = 70; // px/second scroll speed
 const SEPARATOR = '   ◆   ';
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const TEXT_RAISE = 18; // px, how far above the curve the words sit
-const SNAKE_AMP = 16; // px, secondary slow undulation amplitude
-const SNAKE_PERIOD = 640; // px, span of the secondary undulation
+const TEXT_RAISE = 16; // px, how far above the curve the words sit
 
-function waveY(x, snakePhase) {
-  return BASE_Y + SNAKE_AMP * Math.sin((2 * Math.PI * x) / SNAKE_PERIOD + snakePhase);
-}
-
-function buildWaveD(totalWidth, snakePhase) {
+// A plain, unmodulated sine wave — just scrolls, no secondary motion.
+function buildWaveD(totalWidth) {
   let d = '';
   const step = 6;
   for (let x = 0; x <= totalWidth; x += step) {
-    const base = waveY(x, snakePhase);
-    const y = base + AMPLITUDE * Math.sin((2 * Math.PI * x) / (HALF_PERIOD * 2));
+    const y = BASE_Y + AMPLITUDE * Math.sin((2 * Math.PI * x) / PERIOD);
     d += (x === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
   }
-  return { d, width: totalWidth };
+  return d;
 }
 
 function initTicker(tickerEl) {
@@ -39,7 +33,9 @@ function initTicker(tickerEl) {
 
   const containerWidth = tickerEl.clientWidth || 600;
   const uid = Math.random().toString(36).slice(2);
-  const halfWidth = Math.ceil((containerWidth + 300) / HALF_PERIOD) * HALF_PERIOD;
+  // halfWidth is always an exact multiple of PERIOD, so the sine wave
+  // tiles perfectly at that boundary — no seam when it loops.
+  const halfWidth = Math.ceil((containerWidth + 300) / PERIOD) * PERIOD;
   const fullWidth = halfWidth * 2;
 
   tickerEl.innerHTML = '';
@@ -48,8 +44,6 @@ function initTicker(tickerEl) {
   svg.setAttribute('width', fullWidth);
   svg.setAttribute('height', SVG_HEIGHT);
   svg.setAttribute('viewBox', `0 0 ${fullWidth} ${SVG_HEIGHT}`);
-  svg.style.transform = 'translateX(0)';
-  svg.style.animation = 'none';
 
   const defs = document.createElementNS(SVG_NS, 'defs');
   const grad = document.createElementNS(SVG_NS, 'linearGradient');
@@ -67,6 +61,7 @@ function initTicker(tickerEl) {
   const path = document.createElementNS(SVG_NS, 'path');
   const pathId = `wavePath-${uid}`;
   path.setAttribute('id', pathId);
+  path.setAttribute('d', buildWaveD(fullWidth)); // built once — a fixed, unmodulated shape
   path.setAttribute('stroke', `url(#waveGrad-${uid})`);
   path.setAttribute('stroke-width', '5');
   path.setAttribute('fill', 'none');
@@ -78,9 +73,14 @@ function initTicker(tickerEl) {
   const textPath = document.createElementNS(SVG_NS, 'textPath');
   textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${pathId}`);
   textPath.setAttribute('href', `#${pathId}`);
-  textPath.setAttribute('dy', String(-TEXT_RAISE));
+
+  // dy set directly on <textPath> is unreliable across browsers — a nested
+  // <tspan dy="..."> is the technique that actually shifts text off the path.
+  const tspan = document.createElementNS(SVG_NS, 'tspan');
+  tspan.setAttribute('dy', String(-TEXT_RAISE));
   const joined = words.join(SEPARATOR) + SEPARATOR;
-  textPath.textContent = joined;
+  tspan.textContent = joined;
+  textPath.appendChild(tspan);
   text.appendChild(textPath);
   svg.appendChild(text);
   tickerEl.appendChild(svg);
@@ -88,27 +88,11 @@ function initTicker(tickerEl) {
   const naturalLen = textPath.getComputedTextLength() || joined.length * 9;
   const repeats = Math.max(1, Math.round(halfWidth / naturalLen));
   const halfText = joined.repeat(repeats);
-  textPath.textContent = halfText + halfText;
+  tspan.textContent = halfText + halfText;
   textPath.setAttribute('textLength', fullWidth);
   textPath.setAttribute('lengthAdjust', 'spacing');
 
-  // Animate the path shape itself (snake-like secondary undulation) and
-  // scroll the whole SVG left continuously; scrollX wraps every halfWidth
-  // so the perfectly periodic wave loops with no seam.
-  let scrollX = 0;
-  let last = null;
-  function frame(ts) {
-    if (last === null) last = ts;
-    const dt = ts - last;
-    last = ts;
-    scrollX = (scrollX + (dt / 1000) * SPEED) % halfWidth;
-    const snakePhase = ts * 0.0007;
-    const { d } = buildWaveD(fullWidth, snakePhase);
-    path.setAttribute('d', d);
-    svg.style.transform = `translateX(${-scrollX}px)`;
-    requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
+  svg.style.setProperty('--scroll-duration', `${Math.max(4, halfWidth / SPEED).toFixed(1)}s`);
 }
 
 let tickerResizeTimeout;
