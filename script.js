@@ -9,22 +9,28 @@
 // rendered width, so the seam lines up perfectly at any screen size.
 const HALF_PERIOD = 90; // px, horizontal span of one hump
 const AMPLITUDE = 55; // px, vertical deviation from the centerline
-const BASE_Y = 80; // px, centerline of the wave within the SVG
-const SVG_HEIGHT = 170;
+const BASE_Y = 100; // px, centerline of the wave within the SVG
+const SVG_HEIGHT = 200;
 const SPEED = 70; // px/second scroll speed
 const SEPARATOR = '   ◆   ';
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const TEXT_RAISE = 18; // px, how far above the curve the words sit
+const SNAKE_AMP = 16; // px, secondary slow undulation amplitude
+const SNAKE_PERIOD = 640; // px, span of the secondary undulation
 
-function buildWaveD(totalWidth) {
-  const firstCx = HALF_PERIOD / 2;
-  const firstCy = BASE_Y - AMPLITUDE;
-  let d = `M0,${BASE_Y} Q${firstCx},${firstCy} ${HALF_PERIOD},${BASE_Y}`;
-  let x = HALF_PERIOD;
-  while (x < totalWidth) {
-    x += HALF_PERIOD;
-    d += ` T${x},${BASE_Y}`;
+function waveY(x, snakePhase) {
+  return BASE_Y + SNAKE_AMP * Math.sin((2 * Math.PI * x) / SNAKE_PERIOD + snakePhase);
+}
+
+function buildWaveD(totalWidth, snakePhase) {
+  let d = '';
+  const step = 6;
+  for (let x = 0; x <= totalWidth; x += step) {
+    const base = waveY(x, snakePhase);
+    const y = base + AMPLITUDE * Math.sin((2 * Math.PI * x) / (HALF_PERIOD * 2));
+    d += (x === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
   }
-  return { d, width: x };
+  return { d, width: totalWidth };
 }
 
 function initTicker(tickerEl) {
@@ -33,17 +39,17 @@ function initTicker(tickerEl) {
 
   const containerWidth = tickerEl.clientWidth || 600;
   const uid = Math.random().toString(36).slice(2);
-
-  // Size one filled "half" of wave comfortably wider than the container.
-  const { width: halfWidth } = buildWaveD(containerWidth + 300);
-  const { d: fullD } = buildWaveD(halfWidth * 2);
+  const halfWidth = Math.ceil((containerWidth + 300) / HALF_PERIOD) * HALF_PERIOD;
+  const fullWidth = halfWidth * 2;
 
   tickerEl.innerHTML = '';
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('class', 'ticker-svg');
-  svg.setAttribute('width', halfWidth * 2);
+  svg.setAttribute('width', fullWidth);
   svg.setAttribute('height', SVG_HEIGHT);
-  svg.setAttribute('viewBox', `0 0 ${halfWidth * 2} ${SVG_HEIGHT}`);
+  svg.setAttribute('viewBox', `0 0 ${fullWidth} ${SVG_HEIGHT}`);
+  svg.style.transform = 'translateX(0)';
+  svg.style.animation = 'none';
 
   const defs = document.createElementNS(SVG_NS, 'defs');
   const grad = document.createElementNS(SVG_NS, 'linearGradient');
@@ -59,8 +65,8 @@ function initTicker(tickerEl) {
   svg.appendChild(defs);
 
   const path = document.createElementNS(SVG_NS, 'path');
-  path.setAttribute('id', `wavePath-${uid}`);
-  path.setAttribute('d', fullD);
+  const pathId = `wavePath-${uid}`;
+  path.setAttribute('id', pathId);
   path.setAttribute('stroke', `url(#waveGrad-${uid})`);
   path.setAttribute('stroke-width', '5');
   path.setAttribute('fill', 'none');
@@ -70,27 +76,39 @@ function initTicker(tickerEl) {
   const text = document.createElementNS(SVG_NS, 'text');
   text.setAttribute('class', 'wave-text');
   const textPath = document.createElementNS(SVG_NS, 'textPath');
-  textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#wavePath-${uid}`);
-  textPath.setAttribute('href', `#wavePath-${uid}`);
+  textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${pathId}`);
+  textPath.setAttribute('href', `#${pathId}`);
+  textPath.setAttribute('dy', String(-TEXT_RAISE));
   const joined = words.join(SEPARATOR) + SEPARATOR;
   textPath.textContent = joined;
   text.appendChild(textPath);
   svg.appendChild(text);
   tickerEl.appendChild(svg);
 
-  // Measure the natural (unstretched) rendered length of one copy of the
-  // word list, so we repeat it roughly enough times to fill one half —
-  // then force the exact fit with textLength so both halves match exactly.
   const naturalLen = textPath.getComputedTextLength() || joined.length * 9;
   const repeats = Math.max(1, Math.round(halfWidth / naturalLen));
   const halfText = joined.repeat(repeats);
   textPath.textContent = halfText + halfText;
-  textPath.setAttribute('textLength', halfWidth * 2);
+  textPath.setAttribute('textLength', fullWidth);
   textPath.setAttribute('lengthAdjust', 'spacing');
 
-  svg.style.setProperty('--scroll-distance', `-${halfWidth}px`);
-  const duration = Math.max(4, halfWidth / SPEED);
-  svg.style.setProperty('--scroll-duration', `${duration.toFixed(1)}s`);
+  // Animate the path shape itself (snake-like secondary undulation) and
+  // scroll the whole SVG left continuously; scrollX wraps every halfWidth
+  // so the perfectly periodic wave loops with no seam.
+  let scrollX = 0;
+  let last = null;
+  function frame(ts) {
+    if (last === null) last = ts;
+    const dt = ts - last;
+    last = ts;
+    scrollX = (scrollX + (dt / 1000) * SPEED) % halfWidth;
+    const snakePhase = ts * 0.0007;
+    const { d } = buildWaveD(fullWidth, snakePhase);
+    path.setAttribute('d', d);
+    svg.style.transform = `translateX(${-scrollX}px)`;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 }
 
 let tickerResizeTimeout;
