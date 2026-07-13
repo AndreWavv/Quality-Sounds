@@ -122,86 +122,32 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 760px) { .nav-links { display: none; } }
 
 /* ============ SINE-WAVE WORD TICKER ============ */
-/* The words' vertical position is mathematically locked to the wave curve
-   flowing beneath them — same wavelength, same horizontal speed — so they
-   trace the sine curve like a cart riding a rollercoaster track, rather
-   than bouncing independently. No background box, no border, no fill. */
+/* The words are literal glyphs sitting on an SVG path via <textPath> —
+   they trace the curve exactly, tilting with its slope, like a cart on a
+   rollercoaster track. Built dynamically in script.js. No background,
+   no border, no box — just the stroked curve and the text on it. */
 .ticker {
   position: relative;
   z-index: 1;
   overflow-x: hidden;
   overflow-y: visible;
-  white-space: nowrap;
-  padding: 26px 0 34px;
+  padding: 10px 0;
 }
 
-.ticker::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='40' viewBox='0 0 140 40'%3E%3Cpath d='M0,20 Q35,6 70,20 T140,20' stroke='%236C8CFF' stroke-width='1.5' fill='none' opacity='0.5'/%3E%3C/svg%3E");
-  background-repeat: repeat-x;
-  background-size: 140px 40px;
-  background-position: 0 center;
-  animation: wave-flow 2s linear infinite;
-  z-index: 0;
-  pointer-events: none;
+.ticker-svg {
+  display: block;
+  animation: ticker-scroll var(--scroll-duration, 20s) linear infinite;
 }
 
-@keyframes wave-flow {
-  from { background-position-x: 0; }
-  to { background-position-x: -140px; }
-}
-
-.ticker-track {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  animation: scroll-wave var(--scroll-duration, 20s) linear infinite;
-}
-
-@keyframes scroll-wave {
+@keyframes ticker-scroll {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to { transform: translateX(var(--scroll-distance, -50%)); }
 }
 
-.ticker-track span {
+.wave-text {
   font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 0 20px;
-  color: var(--white);
-  display: inline-flex;
-  align-items: center;
-  gap: 20px;
-  background: none;
-  border: none;
-  /* 16-point sampled sine keeps this a smooth curve, not a spring bounce */
-  animation: ride-wave 2s linear infinite;
-  animation-delay: var(--wave-delay, 0s);
-}
-.ticker-track span::after { content: '◆'; font-size: 0.45rem; color: var(--purple-bright); }
-
-@keyframes ride-wave {
-  0%    { transform: translateY(0); }
-  6.25% { transform: translateY(-5.4px); }
-  12.5% { transform: translateY(-9.9px); }
-  18.75%{ transform: translateY(-13px); }
-  25%   { transform: translateY(-14px); }
-  31.25%{ transform: translateY(-13px); }
-  37.5% { transform: translateY(-9.9px); }
-  43.75%{ transform: translateY(-5.4px); }
-  50%   { transform: translateY(0); }
-  56.25%{ transform: translateY(5.4px); }
-  62.5% { transform: translateY(9.9px); }
-  68.75%{ transform: translateY(13px); }
-  75%   { transform: translateY(14px); }
-  81.25%{ transform: translateY(13px); }
-  87.5% { transform: translateY(9.9px); }
-  93.75%{ transform: translateY(5.4px); }
-  100%  { transform: translateY(0); }
+  font-size: 15px;
+  fill: var(--white);
 }
 
 /* ============ BUTTONS ============ */

@@ -1,63 +1,96 @@
 // ===== Sine-wave ticker (Home + Mixing/Mastering pages) =====
-// The word list in the HTML is short, so on wide screens a single copy is
-// narrower than the viewport — looping it with just one duplicate leaves a
-// stretch of blank space before it repeats. To fix that for real, we clone
-// the original words enough times to comfortably exceed the container's
-// width, THEN duplicate that whole filled block once more so the -50% loop
-// has no gap at any screen size.
-//
-// These two constants must match the CSS: WAVELENGTH is the width of one
-// cycle of the background wave pattern (.ticker::before background-size),
-// and SPEED is the scroll speed used for --scroll-duration below. Keeping
-// both here in sync with the wave means a word's horizontal position maps
-// directly onto a point on the curve, so its "ride-wave" animation delay
-// can be set to exactly the phase of the curve at that point — the word
-// then travels along the curve rather than bouncing independently of it.
-const WAVELENGTH = 140; // px, matches .ticker::before background-size width
-const SPEED = 70; // px/second, matches .ticker::before wave-flow speed (140px / 2s)
-const RIDE_DURATION = WAVELENGTH / SPEED; // seconds for one full sine cycle
+// Builds an SVG per ticker: a stroked wavy <path>, and the words rendered
+// with <textPath> so they are literal glyphs sitting on that curve —
+// tilting with its slope — rather than a separate bounce animation layered
+// on top. The whole SVG is built twice as wide as the container and
+// scrolled left by exactly half its width, so the loop is seamless: the
+// wave is a repeating shape by construction, and textLength forces both
+// halves of the (identical, duplicated) word string to exactly the same
+// rendered width, so the seam lines up perfectly at any screen size.
+const HALF_PERIOD = 90; // px, horizontal span of one hump
+const AMPLITUDE = 55; // px, vertical deviation from the centerline
+const BASE_Y = 80; // px, centerline of the wave within the SVG
+const SVG_HEIGHT = 170;
+const SPEED = 70; // px/second scroll speed
+const SEPARATOR = '   ◆   ';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function buildWaveD(totalWidth) {
+  const firstCx = HALF_PERIOD / 2;
+  const firstCy = BASE_Y - AMPLITUDE;
+  let d = `M0,${BASE_Y} Q${firstCx},${firstCy} ${HALF_PERIOD},${BASE_Y}`;
+  let x = HALF_PERIOD;
+  while (x < totalWidth) {
+    x += HALF_PERIOD;
+    d += ` T${x},${BASE_Y}`;
+  }
+  return { d, width: x };
+}
 
 function initTicker(tickerEl) {
-  const track = tickerEl.querySelector('.ticker-track');
-  if (!track) return;
+  const words = (tickerEl.dataset.words || '').split(',').map((w) => w.trim().toUpperCase()).filter(Boolean);
+  if (!words.length) return;
 
-  const originalSpans = Array.from(track.children).map((s) => s.cloneNode(true));
-  const containerWidth = tickerEl.clientWidth;
+  const containerWidth = tickerEl.clientWidth || 600;
+  const uid = Math.random().toString(36).slice(2);
 
-  track.innerHTML = '';
-  originalSpans.forEach((s) => track.appendChild(s));
+  // Size one filled "half" of wave comfortably wider than the container.
+  const { width: halfWidth } = buildWaveD(containerWidth + 300);
+  const { d: fullD } = buildWaveD(halfWidth * 2);
 
-  // Keep appending clones of the original sequence until one filled
-  // "half" is comfortably wider than the visible container.
-  let guard = 0;
-  while (track.scrollWidth < containerWidth + 400 && guard < 40) {
-    originalSpans.forEach((s) => track.appendChild(s.cloneNode(true)));
-    guard++;
-  }
+  tickerEl.innerHTML = '';
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'ticker-svg');
+  svg.setAttribute('width', halfWidth * 2);
+  svg.setAttribute('height', SVG_HEIGHT);
+  svg.setAttribute('viewBox', `0 0 ${halfWidth * 2} ${SVG_HEIGHT}`);
 
-  const halfWidth = track.scrollWidth;
-  const halfSpans = Array.from(track.children);
+  const defs = document.createElementNS(SVG_NS, 'defs');
+  const grad = document.createElementNS(SVG_NS, 'linearGradient');
+  grad.setAttribute('id', `waveGrad-${uid}`);
+  grad.setAttribute('x1', '0%'); grad.setAttribute('y1', '0%');
+  grad.setAttribute('x2', '100%'); grad.setAttribute('y2', '0%');
+  const stop1 = document.createElementNS(SVG_NS, 'stop');
+  stop1.setAttribute('offset', '0%'); stop1.setAttribute('stop-color', '#6C8CFF');
+  const stop2 = document.createElementNS(SVG_NS, 'stop');
+  stop2.setAttribute('offset', '100%'); stop2.setAttribute('stop-color', '#B885FF');
+  grad.appendChild(stop1); grad.appendChild(stop2);
+  defs.appendChild(grad);
+  svg.appendChild(defs);
 
-  // Duplicate the filled half once more — this is what the -50% loop
-  // animates across, so both halves are pixel-identical and the seam
-  // between them is invisible.
-  halfSpans.forEach((s) => track.appendChild(s.cloneNode(true)));
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('id', `wavePath-${uid}`);
+  path.setAttribute('d', fullD);
+  path.setAttribute('stroke', `url(#waveGrad-${uid})`);
+  path.setAttribute('stroke-width', '5');
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(path);
 
-  // Give each word a negative animation-delay equal to how far "into" the
-  // wave cycle its starting x-position already is. A negative delay starts
-  // the animation already in progress at that phase, so at t=0 the word
-  // sits at the correct height for its position — and since the word and
-  // the wave move at the same speed, it stays locked to the curve forever.
-  Array.from(track.children).forEach((span) => {
-    const x = span.offsetLeft + span.offsetWidth / 2;
-    const phaseSeconds = (x % WAVELENGTH) / SPEED;
-    span.style.setProperty('--wave-delay', `-${phaseSeconds.toFixed(3)}s`);
-  });
+  const text = document.createElementNS(SVG_NS, 'text');
+  text.setAttribute('class', 'wave-text');
+  const textPath = document.createElementNS(SVG_NS, 'textPath');
+  textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#wavePath-${uid}`);
+  textPath.setAttribute('href', `#wavePath-${uid}`);
+  const joined = words.join(SEPARATOR) + SEPARATOR;
+  textPath.textContent = joined;
+  text.appendChild(textPath);
+  svg.appendChild(text);
+  tickerEl.appendChild(svg);
 
-  // Keep scroll speed visually consistent regardless of how much content
-  // ended up in one half, and matched to the same SPEED as the wave curve.
+  // Measure the natural (unstretched) rendered length of one copy of the
+  // word list, so we repeat it roughly enough times to fill one half —
+  // then force the exact fit with textLength so both halves match exactly.
+  const naturalLen = textPath.getComputedTextLength() || joined.length * 9;
+  const repeats = Math.max(1, Math.round(halfWidth / naturalLen));
+  const halfText = joined.repeat(repeats);
+  textPath.textContent = halfText + halfText;
+  textPath.setAttribute('textLength', halfWidth * 2);
+  textPath.setAttribute('lengthAdjust', 'spacing');
+
+  svg.style.setProperty('--scroll-distance', `-${halfWidth}px`);
   const duration = Math.max(4, halfWidth / SPEED);
-  track.style.setProperty('--scroll-duration', `${duration.toFixed(1)}s`);
+  svg.style.setProperty('--scroll-duration', `${duration.toFixed(1)}s`);
 }
 
 let tickerResizeTimeout;
