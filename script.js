@@ -44,7 +44,8 @@ function initTicker(tickerEl) {
 
   tickerEl.innerHTML = '';
   const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('class', 'ticker-svg');
+  // Note: the 'ticker-svg' class (which triggers the CSS animation) is
+  // intentionally NOT added yet — see bottom of this function for why.
   svg.setAttribute('width', fullWidth);
   svg.setAttribute('height', SVG_HEIGHT);
   svg.setAttribute('viewBox', `0 0 ${fullWidth} ${SVG_HEIGHT}`);
@@ -93,7 +94,10 @@ function initTicker(tickerEl) {
   svg.appendChild(text);
   tickerEl.appendChild(svg);
 
-  const naturalLen = textPath.getComputedTextLength() || joined.length * 9;
+  let naturalLen = textPath.getComputedTextLength();
+  if (!naturalLen || !isFinite(naturalLen) || naturalLen <= 0) {
+    naturalLen = joined.length * 9; // fallback estimate if measurement fails
+  }
   const repeats = Math.max(1, Math.round(halfWidth / naturalLen));
   const halfText = joined.repeat(repeats);
   textPath.textContent = halfText + halfText;
@@ -104,6 +108,12 @@ function initTicker(tickerEl) {
   // against an SVG element's own box the way they do on HTML elements.
   svg.style.setProperty('--scroll-distance', `-${halfWidth}px`);
   svg.style.setProperty('--scroll-duration', `${Math.max(4, halfWidth / SPEED).toFixed(1)}s`);
+
+  // Only NOW add the class that triggers the CSS animation — everything
+  // it depends on (--scroll-distance, --scroll-duration) is already set,
+  // so the very first frame of the animation uses the correct values
+  // instead of momentarily locking in the CSS fallback (-50%, 20s).
+  svg.classList.add('ticker-svg');
 }
 
 let tickerResizeTimeout;
