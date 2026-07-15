@@ -141,7 +141,7 @@ a { color: inherit; text-decoration: none; }
 
 @keyframes ticker-scroll {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to { transform: translateX(var(--scroll-distance, -50%)); }
 }
 
 .wave-text {

@@ -17,11 +17,15 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const TEXT_RAISE = 16; // px, how far above the curve the words sit
 
 // A plain, unmodulated sine wave — just scrolls, no secondary motion.
-function buildWaveD(totalWidth) {
+// Accepts baseY so we can build two parallel copies: one visible (the
+// stroked line) and one invisible "guide" shifted up by TEXT_RAISE, which
+// the text follows — this keeps the text on a completely normal, single
+// textPath (no nested tspan), so textLength/lengthAdjust works correctly.
+function buildWaveD(totalWidth, baseY) {
   let d = '';
   const step = 6;
   for (let x = 0; x <= totalWidth; x += step) {
-    const y = BASE_Y + AMPLITUDE * Math.sin((2 * Math.PI * x) / PERIOD);
+    const y = baseY + AMPLITUDE * Math.sin((2 * Math.PI * x) / PERIOD);
     d += (x === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
   }
   return d;
@@ -61,26 +65,30 @@ function initTicker(tickerEl) {
   const path = document.createElementNS(SVG_NS, 'path');
   const pathId = `wavePath-${uid}`;
   path.setAttribute('id', pathId);
-  path.setAttribute('d', buildWaveD(fullWidth)); // built once — a fixed, unmodulated shape
+  path.setAttribute('d', buildWaveD(fullWidth, BASE_Y)); // built once — a fixed, unmodulated shape
   path.setAttribute('stroke', `url(#waveGrad-${uid})`);
   path.setAttribute('stroke-width', '5');
   path.setAttribute('fill', 'none');
   path.setAttribute('stroke-linecap', 'round');
   svg.appendChild(path);
 
+  // Invisible guide path, same shape, shifted up by TEXT_RAISE — the text
+  // follows this one, so it sits above the visible line instead of on it.
+  const guidePath = document.createElementNS(SVG_NS, 'path');
+  const guideId = `waveGuide-${uid}`;
+  guidePath.setAttribute('id', guideId);
+  guidePath.setAttribute('d', buildWaveD(fullWidth, BASE_Y - TEXT_RAISE));
+  guidePath.setAttribute('fill', 'none');
+  guidePath.setAttribute('stroke', 'none');
+  svg.appendChild(guidePath);
+
   const text = document.createElementNS(SVG_NS, 'text');
   text.setAttribute('class', 'wave-text');
   const textPath = document.createElementNS(SVG_NS, 'textPath');
-  textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${pathId}`);
-  textPath.setAttribute('href', `#${pathId}`);
-
-  // dy set directly on <textPath> is unreliable across browsers — a nested
-  // <tspan dy="..."> is the technique that actually shifts text off the path.
-  const tspan = document.createElementNS(SVG_NS, 'tspan');
-  tspan.setAttribute('dy', String(-TEXT_RAISE));
+  textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${guideId}`);
+  textPath.setAttribute('href', `#${guideId}`);
   const joined = words.join(SEPARATOR) + SEPARATOR;
-  tspan.textContent = joined;
-  textPath.appendChild(tspan);
+  textPath.textContent = joined;
   text.appendChild(textPath);
   svg.appendChild(text);
   tickerEl.appendChild(svg);
@@ -88,10 +96,13 @@ function initTicker(tickerEl) {
   const naturalLen = textPath.getComputedTextLength() || joined.length * 9;
   const repeats = Math.max(1, Math.round(halfWidth / naturalLen));
   const halfText = joined.repeat(repeats);
-  tspan.textContent = halfText + halfText;
+  textPath.textContent = halfText + halfText;
   textPath.setAttribute('textLength', fullWidth);
   textPath.setAttribute('lengthAdjust', 'spacing');
 
+  // Explicit pixel distance — percentage transforms don't reliably resolve
+  // against an SVG element's own box the way they do on HTML elements.
+  svg.style.setProperty('--scroll-distance', `-${halfWidth}px`);
   svg.style.setProperty('--scroll-duration', `${Math.max(4, halfWidth / SPEED).toFixed(1)}s`);
 }
 
