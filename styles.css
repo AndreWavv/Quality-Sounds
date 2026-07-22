@@ -27,14 +27,13 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 
-/* Full-page scroll-snapping — opt-in via a class on <html>, so only the
-   home page (which uses it) is affected, not the other pages. */
-html.snap-page {
-  scroll-snap-type: y mandatory;
-}
-html.snap-page body {
-  scroll-snap-type: y mandatory;
-}
+/* Note: full-page section transitions on the home page are handled in
+   script.js with a proper JS-driven controller (one section per scroll
+   gesture, debounced, smooth), NOT native CSS scroll-snap. Native
+   `scroll-snap-type: mandatory` was tried first but is a known source of
+   overshoot/erratic jumps with full-height sections, and having it
+   declared on both <html> and <body> at once (a real bug) made it worse —
+   removed entirely in favor of the JS controller below.
 
 body {
   background: var(--black);
@@ -187,7 +186,6 @@ a { color: inherit; text-decoration: none; }
   text-align: center;
   padding: 0 5vw;
   overflow: hidden;
-  scroll-snap-align: start;
 }
 
 .hero-eyebrow {
@@ -230,7 +228,6 @@ a { color: inherit; text-decoration: none; }
   grid-template-columns: 1fr 1fr;
   gap: 60px;
   align-items: center;
-  scroll-snap-align: start;
 }
 
 /* clean circle frame for the About photo */
@@ -310,15 +307,15 @@ a { color: inherit; text-decoration: none; }
 /* ============ BENTO SERVICES GRID (not a uniform boxy grid) ============ */
 .grid-section { padding: 60px 5vw 140px; position: relative; }
 
-/* Opt-in modifier for full-height scroll-snap "pages" — applied only
-   where the home page needs it, so shared sections on other pages
-   (e.g. mixing-mastering.html reuses .grid-section) aren't affected. */
+/* Opt-in modifier for full-height "page" sections — applied only where
+   the home page needs it, so shared sections on other pages (e.g.
+   mixing-mastering.html reuses .grid-section) aren't affected. Navigation
+   between these is handled by the JS controller in script.js. */
 .snap-section {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  scroll-snap-align: start;
 }
 
 .bento {
@@ -386,9 +383,10 @@ footer {
 .footer-links a:hover { color: var(--purple-bright); }
 
 /* ============ PAGE HEADER ============ */
-.page-head { position: relative; padding: 150px 5vw 60px; }
+.page-head { position: relative; padding: 150px 5vw 60px; text-align: center; }
 .page-head h1 { font-family: var(--display); font-weight: 400; text-transform: uppercase; font-size: clamp(2.8rem, 7vw, 5.5rem); z-index: 1; position: relative; }
-.page-head p { color: var(--grey); max-width: 50ch; margin-top: 18px; font-size: 1.05rem; z-index: 1; position: relative; }
+.page-head p { color: var(--grey); max-width: 50ch; margin: 18px auto 0; font-size: 1.05rem; z-index: 1; position: relative; }
+.page-head .hero-eyebrow { display: block; }
 
 /* ============ FILTER PILLS ============ */
 .filters { display: flex; gap: 10px; flex-wrap: wrap; padding: 40px 5vw 0; }
