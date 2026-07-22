@@ -1,58 +1,31 @@
 // ===== Sine-wave ticker (Home + Mixing/Mastering pages) =====
-// A real traveling wave: y depends on BOTH position (x) and time (t) in a
-// single sine term — y = BASE_Y + AMPLITUDE*sin(k*x - ω*t) — the same
-// equation that describes an actual water wave. The path is rebuilt every
-// animation frame with the current time, so the curve genuinely rises and
-// falls as it travels, rather than a fixed shape being slid sideways.
-// The words ride an invisible copy of that same live curve via <textPath>,
-// and their position along it (startOffset) advances in lockstep with the
-// same speed — so the wave and the words move together, like a surfer
-// carried by the swell instead of being dragged across a static shape.
+// MOTION SHELVED FOR NOW: this renders one static frame — words sitting on
+// a curved wave, raised above the visible line — with no scrolling and no
+// animation loop. The animated version kept causing issues (speed, loop
+// seams), so for now this is deliberately frozen until revisited.
 const PERIOD = 180; // px, spatial wavelength
 const AMPLITUDE = 28; // px, true vertical peak
 const BASE_Y = 70; // px, centerline of the wave within the SVG
 const SVG_HEIGHT = 150;
-const SPEED = 70; // px/second — shared by the wave's travel speed AND the text's scroll speed, so they move as one
 const SEPARATOR = '   ◆   ';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const TEXT_RAISE = 16; // px, how far above the curve the words sit
-const K = (2 * Math.PI) / PERIOD;
-const OMEGA = K * SPEED; // temporal frequency, chosen so phase velocity = SPEED
 
-// Rebuilt every frame with the current time t (seconds). baseY lets us
-// draw two parallel copies: the visible stroked line, and an invisible
-// guide shifted up by TEXT_RAISE that the text follows.
-function buildWaveD(width, baseY, t) {
+function buildWaveD(width, baseY) {
   let d = '';
   const step = 8;
   for (let x = 0; x <= width; x += step) {
-    const y = baseY + AMPLITUDE * Math.sin(K * x + OMEGA * t);
+    const y = baseY + AMPLITUDE * Math.sin((2 * Math.PI * x) / PERIOD);
     d += (x === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
   }
   return d;
 }
-
-// Tracks each ticker's last-built width and a "generation" counter, so a
-// spurious resize (e.g. a mobile browser's address bar collapsing on
-// scroll) doesn't tear down and restart an otherwise-unaffected ticker,
-// and so a real rebuild cleanly cancels its predecessor's animation loop.
-const tickerWidths = new WeakMap();
-const tickerGenerations = new WeakMap();
 
 function initTicker(tickerEl) {
   const words = (tickerEl.dataset.words || '').split(',').map((w) => w.trim().toUpperCase()).filter(Boolean);
   if (!words.length) return;
 
   const width = tickerEl.clientWidth || 600;
-  const prevWidth = tickerWidths.get(tickerEl);
-  if (prevWidth !== undefined && Math.abs(prevWidth - width) < 24) {
-    return; // width barely changed — not worth tearing down and restarting
-  }
-  tickerWidths.set(tickerEl, width);
-
-  const generation = (tickerGenerations.get(tickerEl) || 0) + 1;
-  tickerGenerations.set(tickerEl, generation);
-
   const uid = Math.random().toString(36).slice(2);
 
   tickerEl.innerHTML = '';
@@ -76,16 +49,17 @@ function initTicker(tickerEl) {
   svg.appendChild(defs);
 
   const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', buildWaveD(width, BASE_Y));
   path.setAttribute('stroke', `url(#waveGrad-${uid})`);
   path.setAttribute('stroke-width', '5');
   path.setAttribute('fill', 'none');
   path.setAttribute('stroke-linecap', 'round');
   svg.appendChild(path);
 
-  // Invisible guide path — same live curve, shifted up by TEXT_RAISE.
   const guidePath = document.createElementNS(SVG_NS, 'path');
   const guideId = `waveGuide-${uid}`;
   guidePath.setAttribute('id', guideId);
+  guidePath.setAttribute('d', buildWaveD(width, BASE_Y - TEXT_RAISE));
   guidePath.setAttribute('fill', 'none');
   guidePath.setAttribute('stroke', 'none');
   svg.appendChild(guidePath);
@@ -96,35 +70,18 @@ function initTicker(tickerEl) {
   textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${guideId}`);
   textPath.setAttribute('href', `#${guideId}`);
   const joined = words.join(SEPARATOR) + SEPARATOR;
-  textPath.textContent = joined; // temporary, just to measure one repeat's length
+  textPath.textContent = joined;
   text.appendChild(textPath);
   svg.appendChild(text);
   tickerEl.appendChild(svg);
 
-  // Measure exactly how long one pass through the word list renders as —
-  // this becomes the wrap length for startOffset. Since the text repeats
-  // EXACTLY every oneRepeatLen px (not force-stretched to fit anything),
-  // wrapping the offset by that exact amount is a mathematically perfect
-  // loop: no estimation, no compression artifacts, no overlap risk.
   let oneRepeatLen = textPath.getComputedTextLength();
   if (!oneRepeatLen || !isFinite(oneRepeatLen) || oneRepeatLen <= 0) {
-    oneRepeatLen = joined.length * 9; // fallback estimate if measurement fails
+    oneRepeatLen = joined.length * 9;
   }
-  const repeatCount = Math.max(6, Math.ceil((width * 3) / oneRepeatLen));
+  const repeatCount = Math.max(2, Math.ceil((width * 1.2) / oneRepeatLen));
   textPath.textContent = joined.repeat(repeatCount);
-
-  let start = null;
-  function frame(now) {
-    if (tickerGenerations.get(tickerEl) !== generation) return; // superseded by a rebuild — stop
-    if (start === null) start = now;
-    const t = (now - start) / 1000;
-    path.setAttribute('d', buildWaveD(width, BASE_Y, t));
-    guidePath.setAttribute('d', buildWaveD(width, BASE_Y - TEXT_RAISE, t));
-    const offset = (((t * SPEED) % oneRepeatLen) + oneRepeatLen) % oneRepeatLen;
-    textPath.setAttribute('startOffset', offset.toFixed(1));
-    requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
+  // Static — no requestAnimationFrame loop, startOffset stays at 0.
 }
 
 let tickerResizeTimeout;
