@@ -497,7 +497,8 @@ footer {
 @media (max-width: 900px) { .tiers { grid-template-columns: 1fr; } }
 
 /* ============ FORM ============ */
-.form-section { padding: 40px 5vw 160px; max-width: 640px; }
+.form-section { padding: 40px 5vw 160px; max-width: 640px; margin-left: auto; margin-right: auto; }
+.form-section .section-label { text-align: center; }
 .field { margin-bottom: 22px; }
 .field label { display: block; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--grey); margin-bottom: 10px; }
 .field input, .field select, .field textarea {

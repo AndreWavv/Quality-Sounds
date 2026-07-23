@@ -119,7 +119,11 @@ function initTicker(tickerEl) {
     const t = (now - start) / 1000;
     path.setAttribute('d', buildWaveD(width, BASE_Y, t));
     guidePath.setAttribute('d', buildWaveD(width, BASE_Y - TEXT_RAISE, t));
-    const offset = (((t * SPEED) % oneRepeatLen) + oneRepeatLen) % oneRepeatLen;
+    // Always non-positive (never leaves a blank gap at the path's start),
+    // and increases within each cycle so it moves the SAME direction as
+    // the wave (verified: both track leftward together).
+    const cyclePos = (((t * SPEED) % oneRepeatLen) + oneRepeatLen) % oneRepeatLen;
+    const offset = cyclePos - oneRepeatLen;
     textPath.setAttribute('startOffset', offset.toFixed(1));
     requestAnimationFrame(frame);
   }
