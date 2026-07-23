@@ -79,6 +79,7 @@ function initTicker(tickerEl) {
   svg.appendChild(defs);
 
   const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', buildWaveD(width, BASE_Y, 0));
   path.setAttribute('stroke', `url(#waveGrad-${uid})`);
   path.setAttribute('stroke-width', '5');
   path.setAttribute('fill', 'none');
@@ -88,6 +89,7 @@ function initTicker(tickerEl) {
   const guidePath = document.createElementNS(SVG_NS, 'path');
   const guideId = `waveGuide-${uid}`;
   guidePath.setAttribute('id', guideId);
+  guidePath.setAttribute('d', buildWaveD(width, BASE_Y - TEXT_RAISE, 0));
   guidePath.setAttribute('fill', 'none');
   guidePath.setAttribute('stroke', 'none');
   svg.appendChild(guidePath);
@@ -128,80 +130,6 @@ let tickerResizeTimeout;
 function initAllTickers() {
   document.querySelectorAll('.ticker').forEach(initTicker);
 }
-
-// ===== Full-page "fold" scrolling (Home page only) =====
-// Replaces the earlier native CSS scroll-snap attempt, which was the
-// actual source of the overshoot/erratic-jump bug (mandatory snap on
-// full-height sections is known to overshoot on trackpads, and this file
-// had previously declared it on BOTH <html> and <body> at once — two
-// elements both claiming to be the snap container, which is invalid and
-// made it worse). This is a self-contained, deliberate controller instead:
-// one scroll/swipe/key gesture moves exactly one section, with a lock
-// window so a single gesture can't be misread as several.
-(function () {
-  const sections = Array.from(document.querySelectorAll('.hero, .about, .snap-section'));
-  if (sections.length < 2) return; // only meaningful where these exist (home page)
-
-  let current = 0;
-  let locked = false;
-  const LOCK_MS = 850;
-  const WHEEL_THRESHOLD = 12;
-  const SWIPE_THRESHOLD = 40;
-
-  function goTo(index) {
-    const target = Math.max(0, Math.min(sections.length - 1, index));
-    if (target === current || locked) return;
-    locked = true;
-    current = target;
-    sections[target].scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setTimeout(() => { locked = false; }, LOCK_MS);
-  }
-
-  window.addEventListener('wheel', (e) => {
-    if (locked) { e.preventDefault(); return; }
-    if (Math.abs(e.deltaY) < WHEEL_THRESHOLD) return;
-    e.preventDefault();
-    goTo(current + (e.deltaY > 0 ? 1 : -1));
-  }, { passive: false });
-
-  let touchStartY = null;
-  window.addEventListener('touchstart', (e) => {
-    touchStartY = e.touches[0].clientY;
-  }, { passive: true });
-
-  window.addEventListener('touchend', (e) => {
-    if (touchStartY === null || locked) return;
-    const dy = touchStartY - e.changedTouches[0].clientY;
-    touchStartY = null;
-    if (Math.abs(dy) < SWIPE_THRESHOLD) return;
-    goTo(current + (dy > 0 ? 1 : -1));
-  }, { passive: true });
-
-  window.addEventListener('keydown', (e) => {
-    if (locked) return;
-    if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); goTo(current + 1); }
-    else if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); goTo(current - 1); }
-    else if (e.key === 'Home') { e.preventDefault(); goTo(0); }
-    else if (e.key === 'End') { e.preventDefault(); goTo(sections.length - 1); }
-  });
-
-  // If the user scrolls some other way (scrollbar drag, browser find-in-page,
-  // etc.), keep `current` in sync so the next gesture goes the right way.
-  let scrollSyncTimeout;
-  window.addEventListener('scroll', () => {
-    if (locked) return;
-    clearTimeout(scrollSyncTimeout);
-    scrollSyncTimeout = setTimeout(() => {
-      let closest = 0;
-      let closestDist = Infinity;
-      sections.forEach((sec, i) => {
-        const dist = Math.abs(sec.getBoundingClientRect().top);
-        if (dist < closestDist) { closestDist = dist; closest = i; }
-      });
-      current = closest;
-    }, 150);
-  }, { passive: true });
-})();
 initAllTickers();
 window.addEventListener('resize', () => {
   clearTimeout(tickerResizeTimeout);
