@@ -222,3 +222,51 @@ document.querySelectorAll('.btn').forEach((btn) => {
     btn.style.setProperty('--my', `${my}%`);
   });
 });
+
+// ===== Reactive card tilt =====
+// Cards/tiers tilt slightly toward the cursor, matching the same
+// mouse-reactive feel as the star background and buttons. Transition is
+// swapped to instant-response while the cursor is moving, then eased back
+// to neutral on leave — otherwise a lagging transition fights every
+// pointermove update and it feels sluggish instead of reactive.
+function setupTilt(selector, liftPx, tiltMax) {
+  document.querySelectorAll(selector).forEach((el) => {
+    const restTransition = getComputedStyle(el).transition;
+    el.addEventListener('pointerenter', () => {
+      el.style.transition = 'box-shadow 0.35s ease';
+    });
+    el.addEventListener('pointermove', (e) => {
+      const rect = el.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width - 0.5;
+      const py = (e.clientY - rect.top) / rect.height - 0.5;
+      el.style.transform = `translateY(${liftPx}px) perspective(800px) rotateX(${(-py * tiltMax).toFixed(2)}deg) rotateY(${(px * tiltMax).toFixed(2)}deg)`;
+    });
+    el.addEventListener('pointerleave', () => {
+      el.style.transition = restTransition;
+      el.style.transform = '';
+    });
+  });
+}
+setupTilt('.card', -8, 6);
+setupTilt('.beat-card', -8, 6);
+setupTilt('.tier', -6, 5);
+
+// ===== Reactive blob parallax =====
+// Shifts the decorative background blobs via margin (not transform, since
+// their own CSS keyframe animation already owns transform) so they drift
+// toward the cursor slightly — echoing the same parallax the star
+// background's camera does.
+(function () {
+  const blobs = document.querySelectorAll('.blob');
+  if (!blobs.length) return;
+  window.addEventListener('pointermove', (e) => {
+    const cx = (e.clientX / window.innerWidth - 0.5) * 2;
+    const cy = (e.clientY / window.innerHeight - 0.5) * 2;
+    blobs.forEach((blob, i) => {
+      const strength = blob.classList.contains('blob-blue') ? 18 : 24;
+      const dir = i % 2 === 0 ? 1 : -1;
+      blob.style.marginLeft = `${(cx * strength * dir).toFixed(1)}px`;
+      blob.style.marginTop = `${(cy * strength * dir).toFixed(1)}px`;
+    });
+  }, { passive: true });
+})();

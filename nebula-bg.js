@@ -38,8 +38,11 @@
   const colors = new Float32Array(PARTICLE_COUNT * 3);
   const speeds = new Float32Array(PARTICLE_COUNT);
   const tmpColor = new THREE.Color();
+  const sizes = new Float32Array(PARTICLE_COUNT);
+  const twinklePhase = new Float32Array(PARTICLE_COUNT);
 
-  // Blue-to-purple, matching the site's --blue / --purple palette
+  // Mostly pale/white like real starlight, with a faint blue/purple tint —
+  // fully saturated colors read as "gamey" rather than realistic.
   const paletteHues = [224, 262];
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -49,26 +52,64 @@
     positions[i3 + 2] = (Math.random() - 0.5) * BOX;
 
     const hue = paletteHues[Math.floor(Math.random() * paletteHues.length)] / 360;
-    tmpColor.setHSL(hue, 0.85, 0.65);
+    const tinted = Math.random() < 0.35; // most stars stay near-white
+    tmpColor.setHSL(hue, tinted ? 0.55 : 0.08, tinted ? 0.75 : 0.9);
     colors[i3] = tmpColor.r;
     colors[i3 + 1] = tmpColor.g;
     colors[i3 + 2] = tmpColor.b;
 
     speeds[i] = 0.2 + Math.random() * 0.4;
+    // A few bigger/brighter "near" stars among many small distant ones
+    sizes[i] = Math.random() < 0.12 ? (1.8 + Math.random() * 1.6) : (0.5 + Math.random() * 0.7);
+    twinklePhase[i] = Math.random() * Math.PI * 2;
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+  geometry.setAttribute('aTwinkle', new THREE.BufferAttribute(twinklePhase, 1));
 
-  const material = new THREE.PointsMaterial({
-    size: 0.028,
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
+    },
+    vertexShader: `
+      attribute float aSize;
+      attribute float aTwinkle;
+      attribute vec3 color;
+      uniform float uTime;
+      uniform float uPixelRatio;
+      varying vec3 vColor;
+      varying float vTwinkle;
+      void main() {
+        vColor = color;
+        // Gentle brightness pulse per-star, offset so they don't sync up
+        vTwinkle = 0.7 + 0.3 * sin(uTime * 1.6 + aTwinkle);
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = aSize * uPixelRatio * (60.0 / -mvPosition.z);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vColor;
+      varying float vTwinkle;
+      void main() {
+        // Soft circular falloff from center instead of a flat square —
+        // this is what actually makes it read as a glowing star/dot
+        // rather than a hard-edged pixel block.
+        float d = length(gl_PointCoord - vec2(0.5));
+        float core = smoothstep(0.5, 0.0, d);
+        float glow = smoothstep(0.5, 0.0, d) * 0.5 + smoothstep(0.3, 0.0, d) * 0.5;
+        if (core < 0.02) discard;
+        gl_FragColor = vec4(vColor * glow * vTwinkle * 2.0, core * vTwinkle);
+      }
+    `,
     vertexColors: true,
     transparent: true,
-    opacity: 0.7,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    sizeAttenuation: true,
   });
 
   const points = new THREE.Points(geometry, material);
@@ -89,6 +130,7 @@
   const clock = new THREE.Clock();
   function animate() {
     const t = clock.getElapsedTime();
+    material.uniforms.uTime.value = t;
     const pos = geometry.attributes.position.array;
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
