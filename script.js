@@ -207,3 +207,18 @@ if (bookingForm) {
     alert('This form isn\'t connected to anything yet — hook it up to Formspree, a mailto link, or your own backend to start receiving requests.');
   });
 }
+
+// ===== Button spotlight glow =====
+// Tracks the cursor position relative to each button and feeds it into
+// --mx/--my (used by the .btn::before radial-gradient in styles.css).
+// Only targets .btn elements, so the nav tabs at the top (a completely
+// separate .nav-links class) are unaffected.
+document.querySelectorAll('.btn').forEach((btn) => {
+  btn.addEventListener('pointermove', (e) => {
+    const rect = btn.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * 100;
+    const my = ((e.clientY - rect.top) / rect.height) * 100;
+    btn.style.setProperty('--mx', `${mx}%`);
+    btn.style.setProperty('--my', `${my}%`);
+  });
+});
