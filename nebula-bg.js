@@ -96,14 +96,17 @@
       varying vec3 vColor;
       varying float vTwinkle;
       void main() {
-        // Soft circular falloff from center instead of a flat square —
-        // this is what actually makes it read as a glowing star/dot
-        // rather than a hard-edged pixel block.
-        float d = length(gl_PointCoord - vec2(0.5));
-        float core = smoothstep(0.5, 0.0, d);
-        float glow = smoothstep(0.5, 0.0, d) * 0.5 + smoothstep(0.3, 0.0, d) * 0.5;
-        if (core < 0.02) discard;
-        gl_FragColor = vec4(vColor * glow * vTwinkle * 2.0, core * vTwinkle);
+        // Soft circular falloff from center instead of a flat square.
+        // IMPORTANT: smoothstep(edge0, edge1, x) requires edge0 < edge1 —
+        // calling it backwards is undefined behavior per the GLSL spec.
+        // (An earlier version did smoothstep(0.5, 0.0, d), which is
+        // exactly that mistake — it happened to work on some GPUs but
+        // silently returned 0 everywhere on others, discarding every
+        // fragment and making the whole star field disappear.)
+        float d = length(gl_PointCoord - vec2(0.5)) * 2.0; // 0 at center, 1 at edge
+        float core = 1.0 - smoothstep(0.0, 1.0, d);
+        if (d > 1.0) discard;
+        gl_FragColor = vec4(vColor * vTwinkle * (1.1 + core), core * vTwinkle);
       }
     `,
     vertexColors: true,
