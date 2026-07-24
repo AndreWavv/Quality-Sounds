@@ -78,7 +78,6 @@
     vertexShader: `
       attribute float aSize;
       attribute float aTwinkle;
-      attribute vec3 color;
       uniform float uTime;
       uniform float uPixelRatio;
       varying vec3 vColor;

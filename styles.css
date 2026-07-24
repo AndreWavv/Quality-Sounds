@@ -6,6 +6,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import url('https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap');
 
+/* Lets --angle animate smoothly as a real angle rather than a discrete
+   string jump; browsers without @property support just skip the
+   rotation and show the gradient border static instead — safe fallback. */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 :root {
   --black: #0A0A0D;
   --charcoal: #15151B;
@@ -161,6 +170,10 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ============ BUTTONS ============ */
+@keyframes card-border-spin {
+  to { --angle: 360deg; }
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -354,12 +367,16 @@ a { color: inherit; text-decoration: none; }
 
 /* clipped-corner shape — like a film slate / ticket stub, not a plain rectangle */
 .card {
-  background: linear-gradient(160deg, var(--charcoal-raised), var(--charcoal));
+  border: 2px solid transparent;
   border-radius: 6px 34px 6px 34px;
   padding: 40px 34px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.35);
   transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), box-shadow 0.35s ease;
   position: relative;
+  background-image: linear-gradient(160deg, var(--charcoal-raised), var(--charcoal)), conic-gradient(from var(--angle), var(--blue), var(--purple), var(--blue-bright), var(--blue));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: card-border-spin 6s linear infinite;
 }
 .card::before {
   content: '';
@@ -434,11 +451,15 @@ footer {
 .beat-grid { padding: 40px 5vw 160px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
 
 .beat-card {
-  background: linear-gradient(160deg, var(--charcoal-raised), var(--charcoal));
+  border: 2px solid transparent;
   border-radius: 6px 30px 6px 30px;
   padding: 28px;
   box-shadow: 0 16px 40px rgba(0,0,0,0.32);
   transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), box-shadow 0.35s ease;
+  background-image: linear-gradient(160deg, var(--charcoal-raised), var(--charcoal)), conic-gradient(from var(--angle), var(--blue), var(--purple), var(--blue-bright), var(--blue));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: card-border-spin 6s linear infinite;
 }
 .beat-card:hover { box-shadow: 0 26px 60px rgba(75, 110, 255, 0.16); }
 
@@ -513,12 +534,16 @@ footer {
 .tiers { padding: 40px 5vw 140px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
 
 .tier {
-  background: linear-gradient(160deg, var(--charcoal-raised), var(--charcoal));
+  border: 2px solid transparent;
   border-radius: 6px 34px 6px 34px;
   padding: 40px 30px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.32);
   transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
   position: relative;
+  background-image: linear-gradient(160deg, var(--charcoal-raised), var(--charcoal)), conic-gradient(from var(--angle), var(--blue), var(--purple), var(--blue-bright), var(--blue));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: card-border-spin 6s linear infinite;
 }
 .tier.featured { box-shadow: 0 0 0 2px var(--purple-bright), 0 25px 60px rgba(157,92,255,0.22); }
 .tier.featured::before {
