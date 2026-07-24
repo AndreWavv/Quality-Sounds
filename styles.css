@@ -48,6 +48,18 @@ body {
 a { color: inherit; text-decoration: none; }
 ::selection { background: var(--purple); color: var(--black); }
 
+/* Background particle nebula — sits behind all real content. Fails
+   silently (just shows the plain black background) if the Three.js CDN
+   script doesn't load, or if the visitor has motion reduced on. */
+#nebula-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+}
+
 /* ============ AMBIENT BLOBS ============ */
 .blob {
   position: absolute;
