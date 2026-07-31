@@ -28,82 +28,33 @@
   <p>Every beat below is available to preview and license instantly. Replace this list with your own catalog — each card is one track.</p>
 </header>
 
-<div class="filters">
-  <button class="pill active" data-filter="all">All</button>
-  <button class="pill" data-filter="trap">Trap</button>
-  <button class="pill" data-filter="rnb">R&amp;B</button>
-  <button class="pill" data-filter="indie-pop">Indie Pop</button>
-  <button class="pill" data-filter="2000s-swag">2000's Swag</button>
-  <button class="pill" data-filter="cinematic">Cinematic</button>
-</div>
-
-<section class="beat-grid" id="beat-grid">
-
-  <div class="beat-card" data-genre="trap">
-    <div class="beat-card-top">
-      <button class="beat-play" data-name="Track Title One" data-audio="#">▶</button>
-      <span class="beat-genre">Trap</span>
-    </div>
-    <h4>Track Title One</h4>
-    <span class="meta">140 BPM · F Minor</span>
-    <div class="beat-bottom">
-      <span class="price">$30+</span>
-      <a href="#" class="btn">License</a>
-    </div>
+<section class="galaxy-section">
+  <div class="filters">
+    <button class="pill active" data-genre="all">All Systems</button>
+    <button class="pill" data-genre="trap">Trap</button>
+    <button class="pill" data-genre="rnb">R&amp;B</button>
+    <button class="pill" data-genre="indie-pop">Indie Pop</button>
+    <button class="pill" data-genre="2000s-swag">2000's Swag</button>
+    <button class="pill" data-genre="cinematic">Cinematic</button>
   </div>
 
-  <div class="beat-card" data-genre="rnb">
-    <div class="beat-card-top">
-      <button class="beat-play" data-name="Track Title Two" data-audio="#">▶</button>
-      <span class="beat-genre">R&amp;B</span>
-    </div>
-    <h4>Track Title Two</h4>
-    <span class="meta">92 BPM · C# Minor</span>
-    <div class="beat-bottom">
-      <span class="price">$30+</span>
-      <a href="#" class="btn">License</a>
+  <p class="galaxy-hint">Drag to look around · Scroll to zoom · Click a bright star to view that beat</p>
+
+  <div class="galaxy-wrap">
+    <div id="galaxy-viewport" class="galaxy-viewport"></div>
+
+    <div class="beat-info-panel" id="beat-info-panel">
+      <button class="beat-info-close" id="beat-info-close" aria-label="Close">✕</button>
+      <span class="beat-genre" id="bi-genre">Trap</span>
+      <h4 id="bi-title">Track Title</h4>
+      <span class="meta" id="bi-meta">140 BPM · F Minor</span>
+      <div class="beat-bottom">
+        <span class="price" id="bi-price">$30+</span>
+        <a href="#" class="btn">License</a>
+      </div>
+      <button class="btn solid beat-play" id="bi-play" data-name="" style="margin-top: 14px; width: 100%; justify-content: center;">▶ Preview</button>
     </div>
   </div>
-
-  <div class="beat-card" data-genre="indie-pop">
-    <div class="beat-card-top">
-      <button class="beat-play" data-name="Track Title Three" data-audio="#">▶</button>
-      <span class="beat-genre">Indie Pop</span>
-    </div>
-    <h4>Track Title Three</h4>
-    <span class="meta">102 BPM · G Major</span>
-    <div class="beat-bottom">
-      <span class="price">$30+</span>
-      <a href="#" class="btn">License</a>
-    </div>
-  </div>
-
-  <div class="beat-card" data-genre="2000s-swag">
-    <div class="beat-card-top">
-      <button class="beat-play" data-name="Track Title Four" data-audio="#">▶</button>
-      <span class="beat-genre">2000's Swag</span>
-    </div>
-    <h4>Track Title Four</h4>
-    <span class="meta">98 BPM · D Minor</span>
-    <div class="beat-bottom">
-      <span class="price">$30+</span>
-      <a href="#" class="btn">License</a>
-    </div>
-  </div>
-
-  <div class="beat-card" data-genre="cinematic">
-    <div class="beat-card-top">
-      <button class="beat-play" data-name="Track Title Five" data-audio="#">▶</button>
-      <span class="beat-genre">Cinematic</span>
-    </div>
-    <h4>Track Title Five</h4>
-    <span class="meta">70 BPM · A Minor</span>
-    <div class="beat-bottom">
-      <span class="price">$30+</span>
-      <a href="#" class="btn">License</a>
-    </div>
-  </div>
-
 </section>
 
 <div class="film-edge"></div>
@@ -175,7 +126,9 @@
 </div>
 
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="nebula-bg.js"></script>
+<script src="beats-galaxy.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

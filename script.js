@@ -140,22 +140,11 @@ window.addEventListener('resize', () => {
   tickerResizeTimeout = setTimeout(initAllTickers, 250);
 });
 
-// ===== Genre filter pills (beats page) =====
-const pills = document.querySelectorAll('.pill');
-const beatCards = document.querySelectorAll('.beat-card');
-
-pills.forEach((pill) => {
-  pill.addEventListener('click', () => {
-    pills.forEach((p) => p.classList.remove('active'));
-    pill.classList.add('active');
-    const filter = pill.dataset.filter;
-
-    beatCards.forEach((card) => {
-      const match = filter === 'all' || card.dataset.genre === filter;
-      card.style.display = match ? '' : 'none';
-    });
-  });
-});
+// Note: genre-pill click handling for the beats page now lives entirely
+// in beats-galaxy.js (it flies the 3D camera to that genre's cluster).
+// The old flat-grid version used to filter .beat-card elements here, but
+// those no longer exist on the page — leaving that logic in would have
+// attached a second, redundant click handler to the same .pill buttons.
 
 // ===== Floating player (beats page) =====
 const floatingPlayer = document.getElementById('floating-player');
