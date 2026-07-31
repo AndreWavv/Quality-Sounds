@@ -261,56 +261,56 @@ setupTilt('.tier', -6, 5);
 })();
 
 // ===== Smoother page scrolling =====
-// Eases the page's scroll position toward the wheel's target instead of
-// jumping immediately, so scrolling feels weighted rather than static.
-// Skips entirely over the beats galaxy viewport, since that canvas uses
-// wheel input for its own 3D zoom (via OrbitControls) — hijacking that
-// scroll too would fight the galaxy's zoom and cause the page to scroll
-// underneath someone just trying to zoom in on a solar system.
+// Real momentum physics, not a position-lerp. A lerp-toward-a-moving-
+// target (the previous version) settles the instant you stop scrolling —
+// it never actually glides. This instead mirrors exactly how the
+// galaxy's own drag-to-look damping works (see beats-galaxy.js's
+// OrbitControls: dampingFactor 0.08, i.e. 92% of velocity retained each
+// frame): each wheel tick adds to a velocity, and that velocity decays
+// exponentially over time, so releasing the wheel still coasts for a
+// beat before settling — the same feel as releasing a drag.
+//
+// Checks e.defaultPrevented rather than hardcoding a check for the
+// galaxy element: OrbitControls calls preventDefault() only when it
+// actually handles the wheel event (i.e. only once zoom is enabled —
+// see the enableZoom gate in beats-galaxy.js). Since the galaxy's
+// canvas is a descendant of window, its listener fires first during
+// the bubble phase, so by the time this handler runs, defaultPrevented
+// already reflects whether something else claimed the event. That
+// means: before you've clicked into the galaxy, wheeling over it
+// scrolls the page normally, like everywhere else on the site.
 (function () {
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-  let current = window.scrollY;
-  let target = window.scrollY;
-  let ticking = false;
+  let velocity = 0;
+  let rafId = null;
+  const FRICTION = 0.92; // matches the galaxy's own OrbitControls damping retention (1 - 0.08)
+  const MAX_VELOCITY = 90;
 
   function maxScroll() {
     return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
   }
 
   function raf() {
-    current += (target - current) * 0.14;
-    if (Math.abs(target - current) < 0.5) {
-      current = target;
-      window.scrollTo({ top: current, left: 0, behavior: 'instant' });
-      ticking = false;
+    if (Math.abs(velocity) < 0.4) {
+      velocity = 0;
+      rafId = null;
       return;
     }
-    window.scrollTo({ top: current, left: 0, behavior: 'instant' });
-    requestAnimationFrame(raf);
+    const max = maxScroll();
+    let next = window.scrollY + velocity;
+    if (next <= 0 || next >= max) velocity = 0; // stop dead at the ends, no bounce
+    next = Math.max(0, Math.min(max, next));
+    window.scrollTo({ top: next, left: 0, behavior: 'instant' });
+    velocity *= FRICTION;
+    rafId = requestAnimationFrame(raf);
   }
 
   window.addEventListener('wheel', (e) => {
-    if (e.target.closest && e.target.closest('.galaxy-wrap')) return; // let OrbitControls own this scroll
+    if (e.defaultPrevented) return; // something else (e.g. the galaxy's own zoom) already claimed this
     e.preventDefault();
-    target = Math.max(0, Math.min(maxScroll(), target + e.deltaY));
-    if (!ticking) {
-      ticking = true;
-      requestAnimationFrame(raf);
-    }
+    velocity += e.deltaY;
+    velocity = Math.max(-MAX_VELOCITY, Math.min(MAX_VELOCITY, velocity));
+    if (!rafId) rafId = requestAnimationFrame(raf);
   }, { passive: false });
-
-  // Keep the eased position in sync if the user scrolls some other way
-  // (keyboard, touch, scrollbar drag), so the next wheel tick continues
-  // smoothly from wherever the page actually is rather than snapping back.
-  window.addEventListener('scroll', () => {
-    if (!ticking) {
-      current = window.scrollY;
-      target = window.scrollY;
-    }
-  }, { passive: true });
-
-  window.addEventListener('resize', () => {
-    target = Math.max(0, Math.min(maxScroll(), target));
-  });
 })();

@@ -77,6 +77,23 @@
   controls.maxDistance = 160;
   controls.target.set(0, 0, 0);
 
+  // Zoom starts disabled — OrbitControls' own wheel handler returns
+  // before calling preventDefault() when enableZoom is false, so until
+  // engaged, wheeling over this canvas just scrolls the page like
+  // anywhere else on the site. Dragging to look around still works
+  // immediately, since that's an unambiguous click+drag gesture with no
+  // competing page interaction to protect.
+  controls.enableZoom = false;
+  let engaged = false;
+  const engageHint = document.getElementById('galaxy-engage-hint');
+  function engage() {
+    if (engaged) return;
+    engaged = true;
+    controls.enableZoom = true;
+    if (engageHint) engageHint.classList.add('hidden');
+  }
+  renderer.domElement.addEventListener('pointerdown', engage, { once: true });
+
   // ---- Two-part star shader: tiny hard bright core + softer glow ----
   // (same shape fix as nebula-bg.js), plus a twinkle driven by uTime.
   // Each material gets its OWN uniforms object; we keep a list of all of
