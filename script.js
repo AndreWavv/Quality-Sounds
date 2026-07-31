@@ -259,3 +259,58 @@ setupTilt('.tier', -6, 5);
     });
   }, { passive: true });
 })();
+
+// ===== Smoother page scrolling =====
+// Eases the page's scroll position toward the wheel's target instead of
+// jumping immediately, so scrolling feels weighted rather than static.
+// Skips entirely over the beats galaxy viewport, since that canvas uses
+// wheel input for its own 3D zoom (via OrbitControls) — hijacking that
+// scroll too would fight the galaxy's zoom and cause the page to scroll
+// underneath someone just trying to zoom in on a solar system.
+(function () {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  let current = window.scrollY;
+  let target = window.scrollY;
+  let ticking = false;
+
+  function maxScroll() {
+    return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  }
+
+  function raf() {
+    current += (target - current) * 0.14;
+    if (Math.abs(target - current) < 0.5) {
+      current = target;
+      window.scrollTo({ top: current, left: 0, behavior: 'instant' });
+      ticking = false;
+      return;
+    }
+    window.scrollTo({ top: current, left: 0, behavior: 'instant' });
+    requestAnimationFrame(raf);
+  }
+
+  window.addEventListener('wheel', (e) => {
+    if (e.target.closest && e.target.closest('.galaxy-wrap')) return; // let OrbitControls own this scroll
+    e.preventDefault();
+    target = Math.max(0, Math.min(maxScroll(), target + e.deltaY));
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(raf);
+    }
+  }, { passive: false });
+
+  // Keep the eased position in sync if the user scrolls some other way
+  // (keyboard, touch, scrollbar drag), so the next wheel tick continues
+  // smoothly from wherever the page actually is rather than snapping back.
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      current = window.scrollY;
+      target = window.scrollY;
+    }
+  }, { passive: true });
+
+  window.addEventListener('resize', () => {
+    target = Math.max(0, Math.min(maxScroll(), target));
+  });
+})();

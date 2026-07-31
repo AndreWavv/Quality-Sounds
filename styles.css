@@ -14,9 +14,9 @@
   --grey-dim: #55565F;
   --white: #F4F4F7;
   --blue: #4B6EFF;
-  --blue-bright: #6C8CFF;
+  --blue-bright: #86A6FF;
   --purple: #9D5CFF;
-  --purple-bright: #B885FF;
+  --purple-bright: #C89EFF;
   --hairline: rgba(244, 244, 247, 0.08);
 
   --display: 'Anton', sans-serif;
@@ -487,8 +487,14 @@ footer {
 
 /* ============ BEATS GALAXY ============ */
 .galaxy-hint {
-  padding: 16px 5vw 0;
-  color: var(--grey-dim);
+  display: inline-block;
+  margin: 16px 5vw 0;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--hairline);
+  border-radius: 100px;
+  backdrop-filter: blur(6px);
+  color: var(--grey);
   font-family: var(--mono);
   font-size: 0.75rem;
   letter-spacing: 0.04em;

@@ -41,6 +41,7 @@
     { id: 'indie-pop', name: 'Indie Pop', color: 0x6bffb8, pos: [-10, -20, 24] },
     { id: '2000s-swag', name: "2000's Swag", color: 0xffe66b, pos: [22, 22, 16] },
     { id: 'cinematic', name: 'Cinematic', color: 0x6b9bff, pos: [2, 2, -38] },
+    { id: 'house', name: 'House', color: 0xff6bd6, pos: [-24, -24, -16] },
   ];
 
   const BEATS = [
@@ -49,6 +50,7 @@
     { genre: 'indie-pop', title: 'Track Title Three', meta: '102 BPM · G Major', price: '$30+' },
     { genre: '2000s-swag', title: 'Track Title Four', meta: '98 BPM · D Minor', price: '$30+' },
     { genre: 'cinematic', title: 'Track Title Five', meta: '70 BPM · A Minor', price: '$30+' },
+    { genre: 'house', title: 'Track Title Six', meta: '124 BPM · A Minor', price: '$30+' },
   ];
 
   let width = container.clientWidth || 800;
@@ -136,7 +138,7 @@
   // borrow the site-wide background through transparency). Given its own
   // slow rotation so the whole field visibly drifts.
   const fieldStars = (function addFieldStars() {
-    const count = 500;
+    const count = 1600;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
