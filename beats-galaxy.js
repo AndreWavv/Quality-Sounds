@@ -77,22 +77,38 @@
   controls.maxDistance = 160;
   controls.target.set(0, 0, 0);
 
-  // Zoom starts disabled — OrbitControls' own wheel handler returns
-  // before calling preventDefault() when enableZoom is false, so until
-  // engaged, wheeling over this canvas just scrolls the page like
-  // anywhere else on the site. Dragging to look around still works
-  // immediately, since that's an unambiguous click+drag gesture with no
-  // competing page interaction to protect.
+  // OrbitControls' built-in wheel-zoom applies each tick's distance
+  // change immediately — unlike its drag-to-look, which spreads rotation
+  // deltas across frames via dampingFactor, zoom has no equivalent glide.
+  // So zoom is handled entirely custom here instead, using the exact
+  // same accumulate-then-decay approach as the drag damping, for a
+  // consistent feel between the two gestures. (Verified safe to move
+  // camera.position directly like this: OrbitControls re-derives its
+  // internal spherical coordinates from the actual camera position at
+  // the start of every update() call, rather than trusting some
+  // separately-persisted radius — so it won't fight this.)
   controls.enableZoom = false;
+  let zoomVelocity = 0;
+  const ZOOM_FRICTION = 0.90;
+
   let engaged = false;
   const engageHint = document.getElementById('galaxy-engage-hint');
   function engage() {
     if (engaged) return;
     engaged = true;
-    controls.enableZoom = true;
     if (engageHint) engageHint.classList.add('hidden');
   }
   renderer.domElement.addEventListener('pointerdown', engage, { once: true });
+
+  // Not engaged yet: do nothing here at all, so the wheel event is left
+  // completely alone and just scrolls the page normally, like anywhere
+  // else on the site — this is what actually fixes wanting to hit the
+  // genre tabs instead of scrolling past the galaxy.
+  renderer.domElement.addEventListener('wheel', (e) => {
+    if (!engaged) return;
+    e.preventDefault();
+    zoomVelocity += e.deltaY * 0.05;
+  }, { passive: false });
 
   // ---- Two-part star shader: tiny hard bright core + softer glow ----
   // (same shape fix as nebula-bg.js), plus a twinkle driven by uTime.
@@ -379,6 +395,23 @@
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
     const t = clock.getElapsedTime();
+
+    // Custom damped zoom — accumulated velocity decays each frame, same
+    // pattern as the drag-to-look damping, so releasing the wheel still
+    // glides for a moment instead of stopping dead. Applied BEFORE
+    // controls.update() so OrbitControls picks up the new distance
+    // correctly this same frame (see the comment where this is set up).
+    if (Math.abs(zoomVelocity) > 0.001) {
+      const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+      const dist = offset.length();
+      const newDist = Math.max(controls.minDistance, Math.min(controls.maxDistance, dist + zoomVelocity));
+      offset.setLength(newDist);
+      camera.position.copy(controls.target).add(offset);
+      zoomVelocity *= ZOOM_FRICTION;
+    } else {
+      zoomVelocity = 0;
+    }
+
     controls.update();
 
     // This is the actual fix for "nothing is moving" — the previous

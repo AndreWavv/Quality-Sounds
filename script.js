@@ -260,57 +260,9 @@ setupTilt('.tier', -6, 5);
   }, { passive: true });
 })();
 
-// ===== Smoother page scrolling =====
-// Real momentum physics, not a position-lerp. A lerp-toward-a-moving-
-// target (the previous version) settles the instant you stop scrolling —
-// it never actually glides. This instead mirrors exactly how the
-// galaxy's own drag-to-look damping works (see beats-galaxy.js's
-// OrbitControls: dampingFactor 0.08, i.e. 92% of velocity retained each
-// frame): each wheel tick adds to a velocity, and that velocity decays
-// exponentially over time, so releasing the wheel still coasts for a
-// beat before settling — the same feel as releasing a drag.
-//
-// Checks e.defaultPrevented rather than hardcoding a check for the
-// galaxy element: OrbitControls calls preventDefault() only when it
-// actually handles the wheel event (i.e. only once zoom is enabled —
-// see the enableZoom gate in beats-galaxy.js). Since the galaxy's
-// canvas is a descendant of window, its listener fires first during
-// the bubble phase, so by the time this handler runs, defaultPrevented
-// already reflects whether something else claimed the event. That
-// means: before you've clicked into the galaxy, wheeling over it
-// scrolls the page normally, like everywhere else on the site.
-(function () {
-  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-  let velocity = 0;
-  let rafId = null;
-  const FRICTION = 0.92; // matches the galaxy's own OrbitControls damping retention (1 - 0.08)
-  const MAX_VELOCITY = 90;
-
-  function maxScroll() {
-    return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-  }
-
-  function raf() {
-    if (Math.abs(velocity) < 0.4) {
-      velocity = 0;
-      rafId = null;
-      return;
-    }
-    const max = maxScroll();
-    let next = window.scrollY + velocity;
-    if (next <= 0 || next >= max) velocity = 0; // stop dead at the ends, no bounce
-    next = Math.max(0, Math.min(max, next));
-    window.scrollTo({ top: next, left: 0, behavior: 'instant' });
-    velocity *= FRICTION;
-    rafId = requestAnimationFrame(raf);
-  }
-
-  window.addEventListener('wheel', (e) => {
-    if (e.defaultPrevented) return; // something else (e.g. the galaxy's own zoom) already claimed this
-    e.preventDefault();
-    velocity += e.deltaY;
-    velocity = Math.max(-MAX_VELOCITY, Math.min(MAX_VELOCITY, velocity));
-    if (!rafId) rafId = requestAnimationFrame(raf);
-  }, { passive: false });
-})();
+// Note: momentum scrolling was previously added here, site-wide — removed.
+// It affected normal page scrolling on every page, which wasn't the
+// intent; the actual ask was for the galaxy's own scroll-to-zoom to feel
+// as smooth as its drag-to-look does. That's implemented in
+// beats-galaxy.js instead, scoped to just that interaction. The rest of
+// the site now scrolls natively again.
