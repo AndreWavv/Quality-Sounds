@@ -10,6 +10,13 @@
 // into that solar system, and the beat cards for that genre pop in once
 // the camera arrives.
 //
+// This version fixes a real bug from the previous one: nothing in the old
+// animate() loop ever moved the stars — only the user-driven camera did,
+// so the scene looked completely frozen. Star clusters (and the sun
+// halos) now have their own continuous gentle rotation/pulse, independent
+// of camera movement, inspired by the uploaded "lunar gravity" reference's
+// `pointsRef.current.rotation.y -= delta * 0.02` technique for its ring.
+//
 // Design note for future changes: createBeatCardElement() below is the
 // ONLY place that builds a beat's visual. If these become 3D planet
 // meshes instead of flat cards later, that's the one function to replace
@@ -30,7 +37,7 @@
 
   const GENRES = [
     { id: 'trap', name: 'Trap', color: 0xff6b6b, pos: [-34, 8, -10] },
-    { id: 'rnb', name: 'R&B', color: 0xffb86b, pos: [32, -6, -20] },
+    { id: 'rnb', name: 'R&B', color: 0x9d5cff, pos: [32, -6, -20] }, // purple, per request
     { id: 'indie-pop', name: 'Indie Pop', color: 0x6bffb8, pos: [-10, -20, 24] },
     { id: '2000s-swag', name: "2000's Swag", color: 0xffe66b, pos: [22, 22, 16] },
     { id: 'cinematic', name: 'Cinematic', color: 0x6b9bff, pos: [2, 2, -38] },
@@ -68,15 +75,25 @@
   controls.maxDistance = 160;
   controls.target.set(0, 0, 0);
 
-  // ---- Sharp star shader (same fix already proven in nebula-bg.js) ----
+  // ---- Two-part star shader: tiny hard bright core + softer glow ----
+  // (same shape fix as nebula-bg.js), plus a twinkle driven by uTime.
+  // Each material gets its OWN uniforms object; we keep a list of all of
+  // them so the per-frame loop can update uTime on each directly, rather
+  // than relying on any assumption about whether Three.js shares/clones
+  // the uniforms object internally.
+  const starMaterials = [];
   function starMaterial() {
-    return new THREE.ShaderMaterial({
-      uniforms: {},
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 } },
       vertexShader: `
         attribute float aSize;
+        attribute float aTwinkle;
+        uniform float uTime;
         varying vec3 vColor;
+        varying float vTwinkle;
         void main() {
           vColor = color;
+          vTwinkle = 0.7 + 0.3 * sin(uTime * 1.6 + aTwinkle);
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           gl_PointSize = aSize * (280.0 / -mvPosition.z);
           gl_Position = projectionMatrix * mvPosition;
@@ -84,11 +101,14 @@
       `,
       fragmentShader: `
         varying vec3 vColor;
+        varying float vTwinkle;
         void main() {
           float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
-          float core = 1.0 - smoothstep(0.35, 1.0, d);
           if (d > 1.0) discard;
-          gl_FragColor = vec4(vColor * (1.3 + core), core);
+          float hardCore = 1.0 - smoothstep(0.0, 0.18, d);
+          float softGlow = 1.0 - smoothstep(0.18, 1.0, d);
+          float alpha = clamp(hardCore + softGlow * 0.55, 0.0, 1.0) * vTwinkle;
+          gl_FragColor = vec4(vColor * vTwinkle * (1.0 + hardCore * 1.6), alpha);
         }
       `,
       vertexColors: true,
@@ -96,12 +116,26 @@
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
+    starMaterials.push(mat);
+    return mat;
+  }
+
+  function buildStarGeometry(count, positions, colors, sizes) {
+    const twinkles = new Float32Array(count);
+    for (let i = 0; i < count; i++) twinkles[i] = Math.random() * Math.PI * 2;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    geo.setAttribute('aTwinkle', new THREE.BufferAttribute(twinkles, 1));
+    return geo;
   }
 
   // A sparse field of distant background stars for this scene specifically
   // (this canvas is opaque now, so it needs its own — it can no longer
-  // borrow the site-wide background through transparency).
-  (function addFieldStars() {
+  // borrow the site-wide background through transparency). Given its own
+  // slow rotation so the whole field visibly drifts.
+  const fieldStars = (function addFieldStars() {
     const count = 500;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
@@ -116,15 +150,15 @@
       colors[i3] = c.r; colors[i3 + 1] = c.g; colors[i3 + 2] = c.b;
       sizes[i] = 0.5 + Math.random() * 0.6;
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    scene.add(new THREE.Points(geo, starMaterial()));
+    const points = new THREE.Points(buildStarGeometry(count, positions, colors, sizes), starMaterial());
+    scene.add(points);
+    return points;
   })();
 
   const genreGroups = {};
   const sunMeshes = []; // clickable core sphere per genre
+  const rotatingClusters = []; // per-genre ambient star Points, rotated each frame
+  const pulsingHalos = []; // { mesh, baseOpacity, phase } for a subtle breathing glow
 
   GENRES.forEach((genre) => {
     const group = new THREE.Group();
@@ -133,7 +167,8 @@
     genreGroups[genre.id] = group;
 
     // The sun — the genre's actual identity. A solid bright core plus
-    // layered soft glow halos (a cheap stand-in for a real bloom pass).
+    // layered soft glow halos (a cheap stand-in for a real bloom pass),
+    // each pulsing gently so it reads as a living star, not a flat disk.
     const core = new THREE.Mesh(
       new THREE.SphereGeometry(2.4, 24, 24),
       new THREE.MeshBasicMaterial({ color: genre.color })
@@ -143,22 +178,24 @@
     sunMeshes.push(core);
 
     [3.6, 5.2, 7.4].forEach((r, i) => {
-      const halo = new THREE.Mesh(
-        new THREE.SphereGeometry(r, 20, 20),
-        new THREE.MeshBasicMaterial({
-          color: genre.color,
-          transparent: true,
-          opacity: 0.16 - i * 0.045,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-        })
-      );
+      const baseOpacity = 0.16 - i * 0.045;
+      const haloMat = new THREE.MeshBasicMaterial({
+        color: genre.color,
+        transparent: true,
+        opacity: baseOpacity,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const halo = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 20), haloMat);
       group.add(halo);
+      pulsingHalos.push({ mesh: halo, baseOpacity, phase: Math.random() * Math.PI * 2 });
     });
 
-    // A modest scatter of small ambient stars around the sun for texture
-    // — dimmer and smaller than the sun itself, not competing with it.
-    const count = 16;
+    // A modest scatter of small ambient stars around the sun — brighter
+    // and bigger closer to the sun, dimmer/smaller farther out (a simple
+    // distance-based falloff, similar in spirit to the reference
+    // component's intensity-by-distance particle coloring).
+    const count = 18;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
@@ -171,14 +208,13 @@
       positions[i3] = r * Math.sin(phi) * Math.cos(theta);
       positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
       positions[i3 + 2] = r * Math.cos(phi);
+      const closeness = 1.0 - (r - 9) / 10; // 1 near the sun, 0 far out
       colors[i3] = c.r; colors[i3 + 1] = c.g; colors[i3 + 2] = c.b;
-      sizes[i] = 0.9 + Math.random() * 1.1;
+      sizes[i] = 0.7 + closeness * 1.4 + Math.random() * 0.4;
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    group.add(new THREE.Points(geo, starMaterial()));
+    const points = new THREE.Points(buildStarGeometry(count, positions, colors, sizes), starMaterial());
+    group.add(points);
+    rotatingClusters.push(points);
   });
 
   // ===== Beat cards (DOM overlay, projected from 3D world positions) =====
@@ -318,9 +354,24 @@
     renderer.setSize(width, height);
   });
 
+  const clock = new THREE.Clock();
+
   function animate() {
     requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    const t = clock.getElapsedTime();
     controls.update();
+
+    // This is the actual fix for "nothing is moving" — the previous
+    // version never touched any object here except via user-driven
+    // camera controls. Now the star field and each sun's cluster/halos
+    // animate continuously on their own.
+    fieldStars.rotation.y += delta * 0.01;
+    rotatingClusters.forEach((pts) => { pts.rotation.y += delta * 0.15; pts.rotation.x += delta * 0.03; });
+    pulsingHalos.forEach(({ mesh, baseOpacity, phase }) => {
+      mesh.material.opacity = baseOpacity + Math.sin(t * 1.4 + phase) * baseOpacity * 0.3;
+    });
+    starMaterials.forEach((m) => { m.uniforms.uTime.value = t; });
 
     beatEntries.forEach(({ el, beat, worldPos }) => {
       const { x, y, behind } = projectToScreen(worldPos);

@@ -95,11 +95,11 @@
       varying vec3 vColor;
       varying float vTwinkle;
       void main() {
-        // Sharp star shape: solid bright core out to d=0.35, then a thin
-        // feathered edge — NOT a soft gradient across the whole radius
-        // (that reads as a blurred circle, not a star). Same cost as
-        // before; this is just a different falloff shape in the same
-        // shader, not more particles or more GPU work.
+        // Two-part star shape: a tiny hard bright pinpoint (the "star"
+        // itself) plus a separate, softer surrounding glow. A single
+        // uniform falloff across the whole dot reads as a blurred circle;
+        // splitting it into a sharp core + wider glow is what actually
+        // makes it read as a point of light with bloom around it.
         // IMPORTANT: smoothstep(edge0, edge1, x) requires edge0 < edge1 —
         // calling it backwards is undefined behavior per the GLSL spec.
         // (An earlier version did smoothstep(0.5, 0.0, d), which is
@@ -107,9 +107,11 @@
         // silently returned 0 everywhere on others, discarding every
         // fragment and making the whole star field disappear.)
         float d = length(gl_PointCoord - vec2(0.5)) * 2.0; // 0 at center, 1 at edge
-        float core = 1.0 - smoothstep(0.35, 1.0, d);
         if (d > 1.0) discard;
-        gl_FragColor = vec4(vColor * vTwinkle * (1.3 + core), core * vTwinkle);
+        float hardCore = 1.0 - smoothstep(0.0, 0.18, d);
+        float softGlow = 1.0 - smoothstep(0.18, 1.0, d);
+        float alpha = clamp(hardCore + softGlow * 0.55, 0.0, 1.0) * vTwinkle;
+        gl_FragColor = vec4(vColor * vTwinkle * (1.0 + hardCore * 1.6), alpha);
       }
     `,
     vertexColors: true,
