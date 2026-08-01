@@ -403,3 +403,35 @@ setupTilt('.tier', -6, 5);
     });
   }
 })();
+
+// ===== Nav tubelight indicator =====
+// Slides a glowing bar to sit above whichever nav item is hovered,
+// falling back to the active page's item when nothing is hovered.
+(function () {
+  const nav = document.getElementById('site-nav');
+  const tubelight = document.getElementById('nav-tubelight');
+  const navLinksWrap = nav ? nav.querySelector('.nav-links') : null;
+  if (!nav || !tubelight || !navLinksWrap) return;
+
+  const items = Array.from(nav.querySelectorAll('.nav-item'));
+  const activeItem = nav.querySelector('.nav-item.active') || items[0];
+
+  function moveTubelightTo(item) {
+    if (!item) return;
+    const itemRect = item.getBoundingClientRect();
+    const wrapRect = navLinksWrap.getBoundingClientRect();
+    tubelight.style.left = `${itemRect.left - wrapRect.left}px`;
+    tubelight.style.width = `${itemRect.width}px`;
+    tubelight.classList.add('visible');
+  }
+
+  items.forEach((item) => {
+    item.addEventListener('mouseenter', () => moveTubelightTo(item));
+  });
+  nav.addEventListener('mouseleave', () => moveTubelightTo(activeItem));
+
+  // Position on load once layout has settled, and again on resize.
+  function initPosition() { moveTubelightTo(activeItem); }
+  requestAnimationFrame(initPosition);
+  window.addEventListener('resize', initPosition);
+})();

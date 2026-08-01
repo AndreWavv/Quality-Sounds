@@ -118,7 +118,7 @@
   const MAX_POLAR = Math.PI - 0.06;
   const ROT_SENSITIVITY = 0.0035;
   const ROT_FRICTION = 0.90;
-  const MAX_ROT_VELOCITY = 0.05;
+  const MAX_ROT_VELOCITY = 0.3;
   let rotVelocityTheta = 0;
   let rotVelocityPhi = 0;
   let isRotDragging = false;
@@ -733,7 +733,7 @@
       // clamp with no easing at all (which is what OrbitControls' own
       // built-in polar limit does, and why moving that limit's exact
       // position didn't fix the "wall" feeling before).
-      const POLAR_CUSHION = 0.35;
+      const POLAR_CUSHION = 0.6;
       let appliedPhi = rotVelocityPhi;
       if (rotVelocityPhi < 0 && spherical.phi - MIN_POLAR < POLAR_CUSHION) {
         appliedPhi *= Math.max(0, (spherical.phi - MIN_POLAR) / POLAR_CUSHION);
