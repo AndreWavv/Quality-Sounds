@@ -269,6 +269,8 @@ a { color: inherit; text-decoration: none; }
 /* ============ ABOUT ============ */
 .about {
   position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
   padding: 130px 5vw;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -358,7 +360,8 @@ a { color: inherit; text-decoration: none; }
   grid-template-columns: 1.3fr 1fr;
   grid-template-rows: auto auto;
   gap: 22px;
-  margin-top: 50px;
+  max-width: 1400px;
+  margin: 50px auto 0;
 }
 
 .bento .card.span-2 { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
@@ -456,6 +459,26 @@ footer {
 }
 .footer-mark { font-family: var(--display); font-weight: 400; text-transform: uppercase; font-size: 1.3rem; }
 .footer-links { display: flex; gap: 26px; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grey); }
+
+.social-links { display: flex; gap: 12px; }
+.social-link {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--grey);
+  transition: color 0.25s ease, border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+}
+.social-link svg { width: 18px; height: 18px; }
+.social-link:hover {
+  color: var(--white);
+  border-color: var(--purple-bright);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(157, 92, 255, 0.25);
+}
 .footer-links a:hover { color: var(--purple-bright); }
 
 /* ============ PAGE HEADER ============ */
@@ -518,8 +541,21 @@ footer {
   overflow: hidden;
 }
 
-.galaxy-beat-card {
+/* Split into two elements: .galaxy-beat-card-pos is the outer wrapper
+   that JS repositions every frame via transform (translate3d), with NO
+   transition — instant, compositor-only tracking, the actual fix for
+   the lag. .galaxy-beat-card (inner) keeps the transitioned scale/fade
+   pop-in effect, which needs a transition but must NOT be the same
+   element/property JS is updating every frame, or the transition would
+   try to ease every single per-frame position update too. */
+.galaxy-beat-card-pos {
   position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+.galaxy-beat-card {
+  position: relative;
   width: 108px;
   transform: translate(-50%, -50%) scale(0.85);
   background: linear-gradient(160deg, #050506, #202024);
@@ -604,6 +640,7 @@ footer {
   width: 280px;
   max-width: calc(100% - 48px);
   z-index: 10;
+  overflow: hidden;
   background: linear-gradient(160deg, #08080a 0%, #3a3a40 60%, #6e6e76 100%);
   border-radius: 20px;
   padding: 24px;
@@ -613,17 +650,46 @@ footer {
   pointer-events: none;
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
-.beat-info-panel.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+/* float-card animates margin-top, not transform — this panel's own
+   transform is already used for the slide-in/out (translateY), so the
+   two effects run independently without fighting each other. */
+.beat-info-panel.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  animation: float-card 5.5s ease-in-out infinite;
+}
+.beat-info-panel::after {
+  content: '';
+  position: absolute;
+  left: -15%;
+  right: -15%;
+  bottom: -55%;
+  height: 75%;
+  z-index: -1;
+  background: radial-gradient(ellipse at center, rgba(75,110,255,0.5), rgba(157,92,255,0.35) 45%, transparent 72%);
+  filter: blur(24px);
+  pointer-events: none;
+}
 .beat-info-panel h4 {
   font-family: var(--display);
   font-weight: 400;
   text-transform: uppercase;
   font-size: 1.4rem;
   margin: 10px 0 6px;
+  position: relative;
 }
-.beat-info-panel .meta { font-family: var(--mono); font-size: 0.75rem; color: var(--grey-dim); display: block; margin-bottom: 16px; }
-.beat-info-panel .beat-bottom { display: flex; justify-content: space-between; align-items: center; }
-.beat-info-panel .price { font-family: var(--mono); font-size: 0.95rem; color: var(--white); }
+.beat-info-panel .meta { font-family: var(--mono); font-size: 0.75rem; color: var(--grey-dim); display: block; margin-bottom: 16px; position: relative; }
+.beat-info-panel .beat-bottom { display: flex; justify-content: space-between; align-items: center; position: relative; }
+.beat-info-panel .price {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 500;
+  background-image: linear-gradient(90deg, var(--blue-bright), var(--purple-bright));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 
 .beat-info-close {
   position: absolute;
@@ -753,7 +819,7 @@ footer {
 .fp-close:hover { color: var(--white); border-color: var(--purple-bright); }
 
 /* ============ LICENSE / PRICING TIERS ============ */
-.tiers { padding: 40px 5vw 140px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.tiers { max-width: 1400px; margin: 0 auto; padding: 40px 5vw 140px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
 
 .tier {
   border-radius: 20px;
@@ -828,3 +894,74 @@ footer {
 }
 .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--purple-bright); }
 .field textarea { min-height: 120px; resize: vertical; }
+
+/* ============ CTA POPUP (home page) ============ */
+.cta-popup {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 200;
+  width: 320px;
+  max-width: calc(100vw - 48px);
+  background: linear-gradient(160deg, #08080a 0%, #3a3a40 60%, #6e6e76 100%);
+  border-radius: 20px;
+  padding: 26px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.55);
+  overflow: hidden;
+  position: fixed;
+  transform: translateY(24px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  animation: float-card 5.5s ease-in-out infinite;
+}
+.cta-popup.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.cta-popup::after {
+  content: '';
+  position: absolute;
+  left: -15%;
+  right: -15%;
+  bottom: -55%;
+  height: 75%;
+  z-index: -1;
+  background: radial-gradient(ellipse at center, rgba(75,110,255,0.5), rgba(157,92,255,0.35) 45%, transparent 72%);
+  filter: blur(24px);
+  pointer-events: none;
+}
+.cta-popup h3 {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 1.5rem;
+  margin: 12px 0 8px;
+}
+.cta-popup p { color: var(--grey); font-size: 0.88rem; margin-bottom: 18px; }
+.cta-popup-actions { display: flex; flex-direction: column; gap: 10px; }
+.cta-popup-actions .btn { justify-content: center; font-size: 0.7rem; padding: 12px 20px; }
+.cta-popup-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--grey);
+  cursor: pointer;
+}
+.cta-popup-close:hover { color: var(--white); border-color: var(--purple-bright); }
+
+@media (max-width: 480px) {
+  .cta-popup { left: 16px; right: 16px; bottom: 16px; width: auto; }
+}
+
+/* ============ ADMIN PAGE ============ */
+.admin-warning {
+  background: rgba(157, 92, 255, 0.08);
+  border: 1px solid var(--purple-bright);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 36px;
+}
+.admin-warning strong { color: var(--purple-bright); }
+.admin-warning p { color: var(--grey); font-size: 0.9rem; margin-top: 10px; line-height: 1.6; }
+#admin-gate .field { max-width: 320px; }

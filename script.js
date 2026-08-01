@@ -266,3 +266,28 @@ setupTilt('.tier', -6, 5);
 // as smooth as its drag-to-look does. That's implemented in
 // beats-galaxy.js instead, scoped to just that interaction. The rest of
 // the site now scrolls natively again.
+
+// ===== Home page CTA popup =====
+// Shows 5s after arrival, once per browser session (sessionStorage) —
+// not on every single page load, which would get naggy fast.
+(function () {
+  const popup = document.getElementById('cta-popup');
+  if (!popup) return; // only exists on index.html
+
+  const closeBtn = document.getElementById('cta-popup-close');
+  const STORAGE_KEY = 'qs-cta-seen';
+
+  if (sessionStorage.getItem(STORAGE_KEY)) return;
+
+  const timer = setTimeout(() => {
+    popup.classList.add('visible');
+    sessionStorage.setItem(STORAGE_KEY, '1');
+  }, 5000);
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      clearTimeout(timer);
+      popup.classList.remove('visible');
+    });
+  }
+})();

@@ -45,11 +45,11 @@
   ];
 
   const BEATS = [
-    { genre: 'trap', title: 'Track Title One', meta: '140 BPM · F Minor', price: '$30+' },
+    { genre: 'trap', title: 'Track Title One', meta: '140 BPM · F Minor', price: '$35+' },
     { genre: 'rnb', title: 'Track Title Two', meta: '92 BPM · C# Minor', price: '$30+' },
-    { genre: 'indie-pop', title: 'Track Title Three', meta: '102 BPM · G Major', price: '$30+' },
+    { genre: 'indie-pop', title: 'Track Title Three', meta: '102 BPM · G Major', price: '$25+' },
     { genre: '2000s-swag', title: 'Track Title Four', meta: '98 BPM · D Minor', price: '$30+' },
-    { genre: 'cinematic', title: 'Track Title Five', meta: '70 BPM · A Minor', price: '$30+' },
+    { genre: 'cinematic', title: 'Track Title Five', meta: '70 BPM · A Minor', price: '$45+' },
     { genre: 'house', title: 'Track Title Six', meta: '124 BPM · A Minor', price: '$30+' },
   ];
 
@@ -258,6 +258,8 @@
   }
 
   function createBeatCardElement(beat, genre) {
+    const pos = document.createElement('div');
+    pos.className = 'galaxy-beat-card-pos';
     const el = document.createElement('div');
     el.className = 'galaxy-beat-card';
     el.innerHTML = `
@@ -265,8 +267,9 @@
       <div class="galaxy-beat-title">${beat.title}</div>
     `;
     el.addEventListener('click', () => showBeatInfo(beat));
-    cardsLayer.appendChild(el);
-    return el;
+    pos.appendChild(el);
+    cardsLayer.appendChild(pos);
+    return { pos, el };
   }
 
   const beatEntries = BEATS.map((beat) => {
@@ -278,8 +281,8 @@
       (Math.random() - 0.5) * 14
     );
     const worldPos = group.position.clone().add(localOffset);
-    const el = createBeatCardElement(beat, genre);
-    return { beat, genre, worldPos, el };
+    const { pos, el } = createBeatCardElement(beat, genre);
+    return { beat, genre, worldPos, pos, el };
   });
 
   function projectToScreen(worldPos) {
@@ -425,10 +428,9 @@
     });
     starMaterials.forEach((m) => { m.uniforms.uTime.value = t; });
 
-    beatEntries.forEach(({ el, beat, worldPos }) => {
+    beatEntries.forEach(({ pos, el, beat, worldPos }) => {
       const { x, y, behind } = projectToScreen(worldPos);
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
+      pos.style.transform = `translate3d(${x}px, ${y}px, 0)`;
       const shouldShow = !behind && beat.genre === activeGenreId;
       el.classList.toggle('visible', shouldShow);
     });

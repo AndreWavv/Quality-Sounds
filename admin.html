@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Beat Upload (Admin) — Quality Sounds</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-mark">Quality Sounds</a>
+  <div class="nav-links">
+    <a href="index.html">Back to Site</a>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="hero-eyebrow">Admin</div>
+  <h1>Upload a Beat</h1>
+  <p>Add a new track to the catalog.</p>
+</header>
+
+<section class="form-section" style="padding-top: 0;">
+  <div class="admin-warning">
+    <strong>⚠️ Local preview only — not a real backend yet.</strong>
+    <p>
+      This page saves what you enter to <em>this browser only</em> (via
+      localStorage). It does <strong>not</strong>: appear on the live
+      site for visitors, upload the audio file anywhere, sync across
+      devices, or survive clearing your browser data. It exists so you
+      can try the workflow and so Claude can build the real, connected
+      version against something concrete. The password gate below is
+      also not real security — anyone who views this page's source can
+      read right past it. Don't rely on it to keep this page private;
+      for now, just don't share this URL.
+    </p>
+  </div>
+
+  <div id="admin-gate">
+    <div class="section-label">Enter Access Code</div>
+    <div class="field">
+      <input type="password" id="admin-password" placeholder="Access code">
+    </div>
+    <button class="btn solid" id="admin-unlock">Unlock</button>
+    <p id="admin-gate-error" style="color: var(--purple-bright); font-family: var(--mono); font-size: 0.8rem; margin-top: 10px; display: none;">
+      That's not it — try again.
+    </p>
+  </div>
+
+  <div id="admin-form-wrap" style="display: none;">
+    <div class="section-label">New Beat</div>
+    <form id="admin-upload-form">
+      <div class="field">
+        <label for="beat-title">Track Title</label>
+        <input type="text" id="beat-title" required>
+      </div>
+      <div class="field">
+        <label for="beat-genre">Genre</label>
+        <select id="beat-genre">
+          <option value="trap">Trap</option>
+          <option value="rnb">R&amp;B</option>
+          <option value="indie-pop">Indie Pop</option>
+          <option value="2000s-swag">2000's Swag</option>
+          <option value="cinematic">Cinematic</option>
+          <option value="house">House</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="beat-bpm">BPM</label>
+        <input type="number" id="beat-bpm" min="1" max="300">
+      </div>
+      <div class="field">
+        <label for="beat-key">Key</label>
+        <input type="text" id="beat-key" placeholder="e.g. F Minor">
+      </div>
+      <div class="field">
+        <label for="beat-price">Starting Price ($)</label>
+        <input type="number" id="beat-price" min="0" step="1" placeholder="30">
+      </div>
+      <div class="field">
+        <label for="beat-audio">Audio File</label>
+        <input type="file" id="beat-audio" accept="audio/*">
+        <span class="meta" style="display:block; margin-top:6px;">Selected file is not actually uploaded anywhere yet — only its name is remembered locally.</span>
+      </div>
+      <button type="submit" class="btn solid">Save Locally</button>
+    </form>
+
+    <div style="margin-top: 50px;">
+      <div class="section-label">Locally Saved Beats</div>
+      <div id="admin-beat-list"></div>
+    </div>
+  </div>
+</section>
+
+<script src="admin.js"></script>
+</body>
+</html>
