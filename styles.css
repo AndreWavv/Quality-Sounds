@@ -3,8 +3,7 @@
    Cinematic dark theme — blue/purple accents
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500&display=swap');
-@import url('https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
   --black: #0A0A0D;
@@ -20,7 +19,7 @@
   --hairline: rgba(244, 244, 247, 0.08);
 
   --display: 'Anton', sans-serif;
-  --body: 'General Sans', sans-serif;
+  --body: 'Hanken Grotesk', sans-serif;
   --mono: 'IBM Plex Mono', monospace;
 }
 
@@ -68,6 +67,16 @@ a { color: inherit; text-decoration: none; }
   opacity: 0.22;
   pointer-events: none;
   z-index: 0;
+}
+/* Once GSAP applies transform to this for scroll-parallax, it becomes a
+   new containing block for the .blob's position:absolute inside it —
+   inset:0 makes it span the same area its parent (.hero/.page-head)
+   already does, so the blob's percentage-based positioning resolves
+   the same way it did before this wrapper existed. */
+.parallax-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 .blob-blue { background: var(--blue); animation: drift1 18s ease-in-out infinite; }
 .blob-purple { background: var(--purple); animation: drift2 22s ease-in-out infinite; }
@@ -218,8 +227,8 @@ a { color: inherit; text-decoration: none; }
   font-family: var(--display);
   font-weight: 400;
   text-transform: uppercase;
-  font-size: clamp(3.4rem, 10.5vw, 8.5rem);
-  line-height: 0.9;
+  font-size: clamp(4.5rem, 14vw, 12rem);
+  line-height: 0.88;
   letter-spacing: 0.01em;
   z-index: 1;
   max-width: 18ch;
@@ -255,6 +264,15 @@ a { color: inherit; text-decoration: none; }
 
 .hero-sub { z-index: 1; margin-top: 26px; max-width: 46ch; color: var(--grey); font-size: 1.08rem; margin-left: auto; margin-right: auto; }
 .hero-actions { z-index: 1; margin-top: 42px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+/* Match the rounded-rectangle card shape used everywhere else on the
+   site, instead of .btn's default clipped-corner pill shape — scoped
+   to just these two hero buttons since .btn is used in plenty of other
+   places (forms, nav) where the original shape still fits fine. */
+.hero-actions .btn {
+  border-radius: 20px;
+  padding: 20px 34px;
+  font-size: 0.85rem;
+}
 
 /* ============ ABOUT ============ */
 .about {
@@ -362,6 +380,7 @@ a { color: inherit; text-decoration: none; }
   border-radius: 20px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  will-change: transform;
   padding: 40px 34px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.35);
   transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), box-shadow 0.35s ease;
@@ -731,6 +750,7 @@ footer {
   border-radius: 20px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  will-change: transform;
   padding: 28px;
   box-shadow: 0 16px 40px rgba(0,0,0,0.32);
   transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), box-shadow 0.35s ease;
@@ -846,6 +866,7 @@ footer {
   border-radius: 20px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  will-change: transform;
   padding: 40px 30px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.32);
   transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);

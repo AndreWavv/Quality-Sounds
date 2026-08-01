@@ -93,8 +93,15 @@
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
-  controls.minDistance = 8;
-  controls.maxDistance = 220;
+  controls.minDistance = 20; // clears the sun's outer halo (radius 13.5) — was 8, letting the camera clip inside it
+  controls.maxDistance = 320; // more headroom to zoom out well past the overview framing distance (~176)
+  // 0 to PI is the actual full range for polar angle (there's no meaningful
+  // ">180°" for an orbit camera — beyond PI just retraces the same
+  // positions from the other side). The "hard stop" feeling at the exact
+  // poles is a gimbal-lock-like singularity in spherical coordinates —
+  // pulling back slightly from the exact top/bottom avoids it.
+  controls.minPolarAngle = 0.08;
+  controls.maxPolarAngle = Math.PI - 0.08;
   controls.target.set(0, 0, 0);
 
   // Custom damped zoom (OrbitControls' own wheel-zoom applies each tick
@@ -172,16 +179,30 @@
   }
 
   const fieldStars = (function addFieldStars() {
-    const count = 2800;
+    const count = 8400; // tripled per request
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const c = new THREE.Color();
+    // Spherical shell, not a cube — a cube's flat faces are much closer
+    // than its corners (max reach along an axis is only half the space
+    // diagonal), so looking in an axis-aligned direction could see empty
+    // space well before maxDistance even though stars existed elsewhere.
+    // This shell's outer radius comfortably exceeds maxDistance (320) in
+    // every direction, so there's no gap no matter which way you're
+    // facing. Cube-root sampling of radius gives uniform density by
+    // volume rather than bunching everything toward the center.
+    const innerR = 50;
+    const outerR = 360;
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
-      positions[i3] = (Math.random() - 0.5) * 300;
-      positions[i3 + 1] = (Math.random() - 0.5) * 300;
-      positions[i3 + 2] = (Math.random() - 0.5) * 300;
+      const u = Math.random();
+      const r = Math.cbrt(u * (outerR ** 3 - innerR ** 3) + innerR ** 3);
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      positions[i3] = r * Math.sin(phi) * Math.cos(theta);
+      positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      positions[i3 + 2] = r * Math.cos(phi);
       c.setHSL(0.6, Math.random() * 0.2, 0.75 + Math.random() * 0.2);
       colors[i3] = c.r; colors[i3 + 1] = c.g; colors[i3 + 2] = c.b;
       sizes[i] = 0.5 + Math.random() * 0.6;
@@ -278,16 +299,20 @@
       pulsingHalos.push({ mesh: halo, baseOpacity, phase: Math.random() * Math.PI * 2 });
     });
 
-    // Denser, flattened-disk star cluster — meant to read as an actual
-    // small galaxy/cluster around the sun (like a mini Milky Way) rather
-    // than a sparse handful of stars. Biased toward the center and
-    // flattened on Y, instead of a uniform sphere.
-    const count = 420;
+    // Star cluster — much richer now: more particles, and a proper
+    // multi-tier color/brightness palette instead of a simple two-color
+    // mix. Inspired by the reference's particle ring: most particles
+    // are neutral/pale, a smaller portion carry the genre's tint, and a
+    // rare few get a brightness "sparkle" boost — brightness also scales
+    // with closeness to the sun, so it reads as genuinely dense near the
+    // center and thins out toward the edges rather than being uniform.
+    const count = 2500;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const c = new THREE.Color(genre.color);
     const pale = new THREE.Color(0xffffff);
+    const coolPale = new THREE.Color(0xcfe0ff);
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
       const theta = Math.random() * Math.PI * 2;
@@ -299,10 +324,15 @@
       positions[i3 + 2] = Math.sin(theta) * r;
 
       const closeness = 1 - radiusFactor;
-      const tinted = Math.random() < 0.45;
-      const mixed = tinted ? c : pale;
-      colors[i3] = mixed.r; colors[i3 + 1] = mixed.g; colors[i3 + 2] = mixed.b;
-      sizes[i] = 0.5 + closeness * 1.2 + Math.random() * 0.5;
+      const palette = Math.random();
+      // ~70% neutral/cool-pale, ~22% genre-tinted, ~8% a bright sparkle
+      // in the genre color — matches the reference's "mostly one base
+      // tone, occasional accent, rare bright outlier" structure.
+      const sparkle = palette > 0.92 ? 1.8 : 1.0;
+      const mixed = palette > 0.92 ? c : palette > 0.7 ? c : (Math.random() < 0.5 ? pale : coolPale);
+      const intensity = (0.55 + closeness * 0.7) * sparkle;
+      colors[i3] = mixed.r * intensity; colors[i3 + 1] = mixed.g * intensity; colors[i3 + 2] = mixed.b * intensity;
+      sizes[i] = 0.4 + closeness * 1.1 + Math.random() * 0.5 + (sparkle > 1 ? 0.5 : 0);
     }
     const points = new THREE.Points(buildStarGeometry(count, positions, colors, sizes), starMaterial());
     // Every cluster was built flat on the same plane (Y) before, so they
@@ -315,6 +345,35 @@
     points.rotation.z = Math.random() * Math.PI;
     group.add(points);
     rotatingClusters.push(points);
+
+    // Asteroid belt — real 3D rock meshes (not flat points) in a tighter
+    // ring closer to the sun than the star cluster extends, alongside it
+    // rather than replacing it. One InstancedMesh per genre keeps this
+    // cheap (7 draw calls total for ~490 rocks, not 490 separate meshes).
+    const ASTEROID_COUNT = 70;
+    const asteroidGeo = new THREE.DodecahedronGeometry(0.55, 0);
+    const asteroidMat = new THREE.MeshStandardMaterial({
+      map: planetTexture,
+      color: genre.color,
+      roughness: 0.95,
+      metalness: 0.05,
+    });
+    const asteroidMesh = new THREE.InstancedMesh(asteroidGeo, asteroidMat, ASTEROID_COUNT);
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < ASTEROID_COUNT; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const r = 8 + Math.random() * 8;
+      const y = (Math.random() - 0.5) * 1.8;
+      dummy.position.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
+      dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      const scale = 0.5 + Math.random() * 1.1;
+      dummy.scale.setScalar(scale);
+      dummy.updateMatrix();
+      asteroidMesh.setMatrixAt(i, dummy.matrix);
+    }
+    asteroidMesh.rotation.copy(points.rotation); // same tilt as this genre's cluster, for visual cohesion
+    group.add(asteroidMesh);
+    rotatingClusters.push(asteroidMesh);
 
     const beats = BEATS.filter((b) => b.genre === genre.id);
     beats.forEach((beat, i) => addPlanetForBeat(beat, group, i));
@@ -557,7 +616,7 @@
       // clamped, so it felt like slamming into a wall with leftover
       // momentum going nowhere. This scales the applied velocity down
       // smoothly as distance approaches either limit.
-      const CUSHION = 6;
+      const CUSHION = 15;
       let applied = zoomVelocity;
       if (zoomVelocity < 0 && dist - controls.minDistance < CUSHION) {
         applied *= Math.max(0, (dist - controls.minDistance) / CUSHION);
