@@ -104,7 +104,7 @@
   controls.enableZoom = false;
   let zoomVelocity = 0;
   const ZOOM_FRICTION = 0.90;
-  const MAX_ZOOM_VELOCITY = 4;
+  const MAX_ZOOM_VELOCITY = 8;
 
   // Rotation is fully custom too now, not OrbitControls' own drag
   // handling — OrbitControls' internal polar-angle clamp is a hard
@@ -279,7 +279,7 @@
     { x: ORBIT_RADIUS * 1.3, y: -ORBIT_RADIUS * 0.55, z: 3.5 },  // lower right
   ];
 
-  const TRAIL_LENGTH = 180; // ~3s of history at 60fps — the old value (22, ~0.35s) covered too small an arc to read as a trail at all
+  const TRAIL_LENGTH = 360; // 6s of history at 60fps
 
   function hexToCss(hex) {
     return '#' + hex.toString(16).padStart(6, '0');
@@ -703,7 +703,7 @@
       // clamped, so it felt like slamming into a wall with leftover
       // momentum going nowhere. This scales the applied velocity down
       // smoothly as distance approaches either limit.
-      const CUSHION = 45;
+      const CUSHION = 70; // NOT 9 — simulated that value and it reintroduced the wall (~117ms to hit the limit, no visible easing). 70 gives ~700ms of real deceleration at velocity=8.
       let applied = zoomVelocity;
       if (zoomVelocity < 0 && dist - controls.minDistance < CUSHION) {
         applied *= Math.max(0, (dist - controls.minDistance) / CUSHION);

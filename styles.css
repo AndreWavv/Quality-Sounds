@@ -498,6 +498,7 @@ footer {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  animation: float-card 5.5s ease-in-out infinite;
 }
 .social-link {
   width: 38px;
