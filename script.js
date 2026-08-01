@@ -228,7 +228,7 @@ function setupTilt(selector, liftPx, tiltMax) {
       const rect = el.getBoundingClientRect();
       const px = (e.clientX - rect.left) / rect.width - 0.5;
       const py = (e.clientY - rect.top) / rect.height - 0.5;
-      el.style.transform = `translateY(${liftPx}px) perspective(800px) rotateX(${(-py * tiltMax).toFixed(2)}deg) rotateY(${(px * tiltMax).toFixed(2)}deg)`;
+      el.style.transform = `translateY(${liftPx}px) rotateX(${(-py * tiltMax).toFixed(2)}deg) rotateY(${(px * tiltMax).toFixed(2)}deg)`;
     });
     el.addEventListener('pointerleave', () => {
       el.style.transition = restTransition;

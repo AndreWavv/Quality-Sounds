@@ -39,7 +39,7 @@
     <button class="pill" data-genre="house">House</button>
   </div>
 
-  <p class="galaxy-hint">Drag to look around · Scroll to zoom · Warp into a solar system to browse its beats</p>
+  <p class="galaxy-hint">Drag to look around · Click a sun to warp in · Scroll to fly past its beats · "All Systems" to return</p>
 
   <div class="galaxy-wrap">
     <div id="galaxy-viewport" class="galaxy-viewport"></div>
@@ -52,12 +52,24 @@
       <span class="beat-genre" id="bi-genre">Trap</span>
       <h4 id="bi-title">Track Title</h4>
       <span class="meta" id="bi-meta">140 BPM · F Minor</span>
-      <span class="meta" style="margin-bottom: 4px;">Starting price — see license tiers below</span>
-      <div class="beat-bottom">
-        <span class="price" id="bi-price">$30+</span>
-        <a href="#licensing" class="btn">License</a>
+
+      <div class="license-options" id="bi-license-options">
+        <button type="button" class="license-option active" data-tier="mp3">
+          <span class="license-name">MP3 Lease</span>
+          <span class="license-price">$30</span>
+        </button>
+        <button type="button" class="license-option" data-tier="trackout">
+          <span class="license-name">Trackout Lease</span>
+          <span class="license-price">$75</span>
+        </button>
+        <button type="button" class="license-option" data-tier="exclusive">
+          <span class="license-name">Exclusive Rights</span>
+          <span class="license-price">Inquire</span>
+        </button>
       </div>
+
       <button class="btn solid beat-play" id="bi-play" data-name="" style="margin-top: 14px; width: 100%; justify-content: center;">▶ Preview</button>
+      <button type="button" class="btn solid" id="bi-buy" style="margin-top: 10px; width: 100%; justify-content: center;">Get License — <span id="bi-selected-price">$30</span></button>
     </div>
   </div>
 </section>
