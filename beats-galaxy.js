@@ -104,7 +104,7 @@
   controls.enableZoom = false;
   let zoomVelocity = 0;
   const ZOOM_FRICTION = 0.90;
-  const MAX_ZOOM_VELOCITY = 12;
+  const MAX_ZOOM_VELOCITY = 4;
 
   // Rotation is fully custom too now, not OrbitControls' own drag
   // handling — OrbitControls' internal polar-angle clamp is a hard
@@ -265,16 +265,21 @@
   // has (currently always <= 6; see the scaling note in the file header
   // for when a genre eventually has more than 6).
   const ORBIT_RADIUS = 17;
+  // Each slot now has a DISTINCT radius (not just mirrored left/right) —
+  // previously left/right pairs shared identical radius AND height,
+  // meaning they orbited on the exact same circle and periodically
+  // collided. Different radius per slot means even same-height pairs
+  // trace concentric, non-intersecting circles.
   const SLOT_OFFSETS = [
-    { x: -ORBIT_RADIUS, y: ORBIT_RADIUS * 0.55, z: 3 },   // upper left
-    { x: ORBIT_RADIUS, y: ORBIT_RADIUS * 0.55, z: -3 },   // upper right
-    { x: -ORBIT_RADIUS * 1.25, y: 0, z: 0 },              // middle left
-    { x: ORBIT_RADIUS * 1.25, y: 0, z: 0 },               // middle right
-    { x: -ORBIT_RADIUS, y: -ORBIT_RADIUS * 0.55, z: -3 }, // lower left
-    { x: ORBIT_RADIUS, y: -ORBIT_RADIUS * 0.55, z: 3 },   // lower right
+    { x: -ORBIT_RADIUS, y: ORBIT_RADIUS * 0.55, z: 3 },          // upper left
+    { x: ORBIT_RADIUS * 1.2, y: ORBIT_RADIUS * 0.55, z: -3.5 },  // upper right
+    { x: -ORBIT_RADIUS * 1.4, y: 0, z: 0 },                      // middle left
+    { x: ORBIT_RADIUS * 1.6, y: 0, z: 0 },                       // middle right
+    { x: -ORBIT_RADIUS * 1.1, y: -ORBIT_RADIUS * 0.55, z: -3 },  // lower left
+    { x: ORBIT_RADIUS * 1.3, y: -ORBIT_RADIUS * 0.55, z: 3.5 },  // lower right
   ];
 
-  const TRAIL_LENGTH = 22;
+  const TRAIL_LENGTH = 180; // ~3s of history at 60fps — the old value (22, ~0.35s) covered too small an arc to read as a trail at all
 
   function hexToCss(hex) {
     return '#' + hex.toString(16).padStart(6, '0');
@@ -698,7 +703,7 @@
       // clamped, so it felt like slamming into a wall with leftover
       // momentum going nowhere. This scales the applied velocity down
       // smoothly as distance approaches either limit.
-      const CUSHION = 15;
+      const CUSHION = 45;
       let applied = zoomVelocity;
       if (zoomVelocity < 0 && dist - controls.minDistance < CUSHION) {
         applied *= Math.max(0, (dist - controls.minDistance) / CUSHION);
