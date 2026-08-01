@@ -276,6 +276,10 @@
 
   const TRAIL_LENGTH = 22;
 
+  function hexToCss(hex) {
+    return '#' + hex.toString(16).padStart(6, '0');
+  }
+
   function addPlanetForBeat(beat, group, slotIndex) {
     const genre = GENRES.find((g) => g.id === beat.genre);
     const offset = SLOT_OFFSETS[slotIndex % SLOT_OFFSETS.length];
@@ -298,7 +302,7 @@
       radius: orbitRadius,
       angle: orbitAngle0,
       y: offset.y,
-      speed: 0.05 + Math.random() * 0.04, // slightly varied per planet so they don't all move in lockstep
+      speed: 0.35 + Math.random() * 0.15, // slightly varied per planet so they don't all move in lockstep
     };
     mesh.position.set(offset.x, offset.y, offset.z);
     group.add(mesh);
