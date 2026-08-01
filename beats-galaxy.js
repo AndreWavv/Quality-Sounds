@@ -40,12 +40,13 @@
   if (!container) return;
 
   const GENRES = [
-    { id: 'trap', name: 'Trap', color: 0xff6b6b, pos: [-34, 8, -10] },
-    { id: 'rnb', name: 'R&B', color: 0x9d5cff, pos: [32, -6, -20] },
-    { id: 'indie-pop', name: 'Indie Pop', color: 0x6bffb8, pos: [-10, -20, 24] },
-    { id: '2000s-swag', name: "2000's Swag", color: 0xffe66b, pos: [22, 22, 16] },
-    { id: 'cinematic', name: 'Cinematic', color: 0x6b9bff, pos: [2, 2, -38] },
-    { id: 'house', name: 'House', color: 0xff6bd6, pos: [-24, -24, -16] },
+    { id: 'trap', name: 'Trap', color: 0xff6b6b, pos: [-70, 15, -20] },
+    { id: 'rnb', name: 'R&B', color: 0x9d5cff, pos: [65, -10, -40] },
+    { id: 'indie-pop', name: 'Indie Pop', color: 0x6bffb8, pos: [-20, -40, 55] },
+    { id: '2000s-swag', name: "2000's Swag", color: 0xffe66b, pos: [45, 45, 30] },
+    { id: 'cinematic', name: 'Cinematic', color: 0x6b9bff, pos: [5, 5, -85] },
+    { id: 'house', name: 'House', color: 0xff6bd6, pos: [-50, -50, -35] },
+    { id: 'synthwave', name: 'Synthwave', color: 0x00e5ff, pos: [85, -40, 45] },
   ];
 
   // Demo beats — 2 per genre. Admin-uploaded beats (via admin.html) are
@@ -63,6 +64,8 @@
     { genre: 'cinematic', title: 'Track Title Eleven', meta: '65 BPM · F Minor', licenses: { mp3: 48, trackout: 98, exclusive: null } },
     { genre: 'house', title: 'Track Title Six', meta: '124 BPM · A Minor', licenses: { mp3: 30, trackout: 70, exclusive: null } },
     { genre: 'house', title: 'Track Title Twelve', meta: '126 BPM · C Minor', licenses: { mp3: 32, trackout: 72, exclusive: null } },
+    { genre: 'synthwave', title: 'Track Title Thirteen', meta: '110 BPM · B Minor', licenses: { mp3: 32, trackout: 74, exclusive: null } },
+    { genre: 'synthwave', title: 'Track Title Fourteen', meta: '100 BPM · E Minor', licenses: { mp3: 30, trackout: 72, exclusive: null } },
   ];
 
   let width = container.clientWidth || 800;
@@ -70,7 +73,7 @@
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 500);
-  camera.position.set(0, 40, 100);
+  camera.position.set(0, 60, 165);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -91,7 +94,7 @@
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.minDistance = 8;
-  controls.maxDistance = 160;
+  controls.maxDistance = 220;
   controls.target.set(0, 0, 0);
 
   // Custom damped zoom (OrbitControls' own wheel-zoom applies each tick
@@ -169,7 +172,7 @@
   }
 
   const fieldStars = (function addFieldStars() {
-    const count = 1600;
+    const count = 2800;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
@@ -209,7 +212,7 @@
   // line in front of the camera. Cycles for however many beats a genre
   // has (currently always <= 6; see the scaling note in the file header
   // for when a genre eventually has more than 6).
-  const ORBIT_RADIUS = 13;
+  const ORBIT_RADIUS = 17;
   const SLOT_OFFSETS = [
     { x: -ORBIT_RADIUS, y: ORBIT_RADIUS * 0.55, z: 3 },   // upper left
     { x: ORBIT_RADIUS, y: ORBIT_RADIUS * 0.55, z: -3 },   // upper right
@@ -228,7 +231,7 @@
       roughness: 0.85,
       metalness: 0.05,
     });
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(2.6, 28, 28), mat);
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(2.0, 28, 28), mat);
     mesh.position.set(offset.x, offset.y, offset.z);
     mesh.userData.beat = beat;
     group.add(mesh);
@@ -242,15 +245,26 @@
     scene.add(group);
     genreGroups[genre.id] = group;
 
-    const core = new THREE.Mesh(
-      new THREE.SphereGeometry(2.4, 24, 24),
-      new THREE.MeshBasicMaterial({ color: genre.color })
-    );
+    // The sun — bigger than any planet (it's the genre's actual star,
+    // planets are just what orbit it), and given real surface texture
+    // via the same shared planet texture, used here as both a color
+    // map AND an emissive map so the surface detail still reads through
+    // the glow rather than washing out to a flat colored ball.
+    const sunMat = new THREE.MeshStandardMaterial({
+      map: planetTexture,
+      color: genre.color,
+      emissive: new THREE.Color(genre.color),
+      emissiveMap: planetTexture,
+      emissiveIntensity: 1.4,
+      roughness: 0.6,
+    });
+    const core = new THREE.Mesh(new THREE.SphereGeometry(4.6, 32, 32), sunMat);
     core.userData.genreId = genre.id;
     group.add(core);
     sunMeshes.push(core);
+    rotatingPlanets.push(core); // suns get the same gentle self-rotation as planets
 
-    [3.6, 5.2, 7.4].forEach((r, i) => {
+    [7.0, 9.8, 13.5].forEach((r, i) => {
       const baseOpacity = 0.16 - i * 0.045;
       const haloMat = new THREE.MeshBasicMaterial({
         color: genre.color,
@@ -268,7 +282,7 @@
     // small galaxy/cluster around the sun (like a mini Milky Way) rather
     // than a sparse handful of stars. Biased toward the center and
     // flattened on Y, instead of a uniform sphere.
-    const count = 220;
+    const count = 420;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
@@ -291,6 +305,14 @@
       sizes[i] = 0.5 + closeness * 1.2 + Math.random() * 0.5;
     }
     const points = new THREE.Points(buildStarGeometry(count, positions, colors, sizes), starMaterial());
+    // Every cluster was built flat on the same plane (Y) before, so they
+    // all visibly "faced" the same way. A one-time random tilt per
+    // genre — kept on top of the existing continuous rotation each
+    // frame — makes each one read as its own galaxy at its own angle,
+    // like real ones seen from different viewpoints.
+    points.rotation.x = Math.random() * Math.PI;
+    points.rotation.y = Math.random() * Math.PI * 2;
+    points.rotation.z = Math.random() * Math.PI;
     group.add(points);
     rotatingClusters.push(points);
 
@@ -335,7 +357,7 @@
     if (id === 'all') {
       activeGenreId = 'all';
       Object.keys(genreGroups).forEach((gid) => { genreGroups[gid].visible = true; });
-      flyTo(new THREE.Vector3(0, 40, 100), new THREE.Vector3(0, 0, 0), 420);
+      flyTo(new THREE.Vector3(0, 60, 165), new THREE.Vector3(0, 0, 0), 420);
     } else {
       const genre = GENRES.find((g) => g.id === id);
       if (!genre) return;
@@ -344,7 +366,7 @@
       const center = new THREE.Vector3(genre.pos[0], genre.pos[1], genre.pos[2]);
       // Further back than the sun itself so the surrounding planets
       // (which sit up to ~ORBIT_RADIUS*1.25 away) are comfortably in frame.
-      const camPos = center.clone().add(new THREE.Vector3(0, 10, 34));
+      const camPos = center.clone().add(new THREE.Vector3(0, 13, 42));
       flyTo(camPos, center, 420);
       // Controls stay fully enabled the entire time — same free
       // drag/orbit/zoom as overview mode, no locked camera.
@@ -529,10 +551,27 @@
     if (Math.abs(zoomVelocity) > 0.001) {
       const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
       const dist = offset.length();
-      const newDist = Math.max(controls.minDistance, Math.min(controls.maxDistance, dist + zoomVelocity));
+
+      // Soft cushion near both limits instead of a hard clamp — the old
+      // version let velocity keep existing even after distance was
+      // clamped, so it felt like slamming into a wall with leftover
+      // momentum going nowhere. This scales the applied velocity down
+      // smoothly as distance approaches either limit.
+      const CUSHION = 6;
+      let applied = zoomVelocity;
+      if (zoomVelocity < 0 && dist - controls.minDistance < CUSHION) {
+        applied *= Math.max(0, (dist - controls.minDistance) / CUSHION);
+      } else if (zoomVelocity > 0 && controls.maxDistance - dist < CUSHION) {
+        applied *= Math.max(0, (controls.maxDistance - dist) / CUSHION);
+      }
+
+      const newDist = Math.max(controls.minDistance, Math.min(controls.maxDistance, dist + applied));
       offset.setLength(newDist);
       camera.position.copy(controls.target).add(offset);
       zoomVelocity *= ZOOM_FRICTION;
+      if (newDist <= controls.minDistance || newDist >= controls.maxDistance) {
+        zoomVelocity *= 0.5; // extra bleed-off right at the limit so it settles instead of feeling stuck
+      }
     } else {
       zoomVelocity = 0;
     }
