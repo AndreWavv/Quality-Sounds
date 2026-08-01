@@ -9,9 +9,7 @@
 </head>
 <body>
 
-<nav class="nav">
-  <a href="index.html" class="nav-mark">Quality Sounds</a>
-  <div class="nav-links">
+<nav class="nav">  <div class="nav-links">
     <a href="index.html">Back to Site</a>
   </div>
 </nav>
@@ -26,14 +24,18 @@
   <div class="admin-warning">
     <strong>⚠️ Local preview only — not a real backend yet.</strong>
     <p>
-      This page saves what you enter to <em>this browser only</em> (via
-      localStorage). It does <strong>not</strong>: appear on the live
-      site for visitors, upload the audio file anywhere, sync across
+      This page saves what you enter to <em>this browser only</em>
+      (metadata in localStorage, audio files in IndexedDB — that part is
+      new, and does let you actually play back what you upload in the
+      beats galaxy on this same browser/device). It still does
+      <strong>not</strong>: appear on the live site for other visitors,
+      upload anything to a real server, sync across your own other
       devices, or survive clearing your browser data. It exists so you
-      can try the workflow and so Claude can build the real, connected
-      version against something concrete. The password gate below is
-      also not real security — anyone who views this page's source can
-      read right past it. Don't rely on it to keep this page private;
+      can try the workflow and test playback, and so Claude can build
+      the real, connected version against something concrete. The
+      password gate below is also not real security — anyone who views
+      this page's source can read right past it. Don't rely on it to
+      keep this page private;
       for now, just don't share this URL.
     </p>
   </div>
@@ -82,7 +84,7 @@
       <div class="field">
         <label for="beat-audio">Audio File</label>
         <input type="file" id="beat-audio" accept="audio/*">
-        <span class="meta" style="display:block; margin-top:6px;">Selected file is not actually uploaded anywhere yet — only its name is remembered locally.</span>
+        <span class="meta" style="display:block; margin-top:6px;">Stored locally in this browser (IndexedDB) and playable in the beats galaxy on this same device — still not uploaded anywhere else.</span>
       </div>
       <button type="submit" class="btn solid">Save Locally</button>
     </form>

@@ -147,24 +147,53 @@ window.addEventListener('resize', () => {
 // attached a second, redundant click handler to the same .pill buttons.
 
 // ===== Floating player (beats page) =====
+// Real playback now (previously cosmetic-only — the "playing" pulse
+// animation existed but there was no actual <audio> element anywhere).
+// One shared Audio() instance so starting a new preview always properly
+// stops whatever was playing before.
 const floatingPlayer = document.getElementById('floating-player');
 const fpName = document.getElementById('fp-name');
 const fpClose = document.getElementById('fp-close');
+const previewAudio = new Audio();
+let activePlayBtn = null;
+
+function stopPreview() {
+  previewAudio.pause();
+  previewAudio.removeAttribute('src');
+  if (activePlayBtn) {
+    activePlayBtn.classList.remove('playing');
+    activePlayBtn.textContent = '▶';
+    activePlayBtn = null;
+  }
+  if (floatingPlayer) floatingPlayer.classList.remove('visible');
+}
+
+previewAudio.addEventListener('ended', stopPreview);
 
 document.querySelectorAll('.beat-play').forEach((btn) => {
   btn.addEventListener('click', () => {
-    const isPlaying = btn.classList.contains('playing');
-
-    document.querySelectorAll('.beat-play.playing').forEach((other) => {
-      other.classList.remove('playing');
-      other.textContent = '▶';
-    });
-
-    if (isPlaying) {
-      if (floatingPlayer) floatingPlayer.classList.remove('visible');
+    const isThisAlreadyPlaying = btn === activePlayBtn && !previewAudio.paused;
+    if (isThisAlreadyPlaying) {
+      stopPreview();
       return;
     }
 
+    // dataset is read fresh here (not captured at page load), so this
+    // always reflects whichever beat was most recently shown — matters
+    // for #bi-play specifically, since beats-galaxy.js updates its
+    // audioUrl every time a different beat's panel opens.
+    const url = btn.dataset.audioUrl || '';
+    if (!url) {
+      alert('No audio file is attached to this beat yet.');
+      return;
+    }
+
+    if (activePlayBtn && activePlayBtn !== btn) {
+      activePlayBtn.classList.remove('playing');
+      activePlayBtn.textContent = '▶';
+    }
+
+    activePlayBtn = btn;
     btn.classList.add('playing');
     btn.textContent = '❚❚';
 
@@ -172,20 +201,19 @@ document.querySelectorAll('.beat-play').forEach((btn) => {
       fpName.textContent = btn.dataset.name || 'Now Playing';
       floatingPlayer.classList.add('visible');
     }
-    // TODO: replace with real audio playback once track files are hosted
-    // const audio = new Audio(btn.dataset.audio);
-    // audio.play();
+
+    previewAudio.src = url;
+    previewAudio.currentTime = 0;
+    previewAudio.play().catch(() => {
+      // Playback blocked or failed to load — don't leave the UI stuck
+      // showing "playing" when nothing is actually audible.
+      stopPreview();
+    });
   });
 });
 
 if (fpClose) {
-  fpClose.addEventListener('click', () => {
-    floatingPlayer.classList.remove('visible');
-    document.querySelectorAll('.beat-play.playing').forEach((btn) => {
-      btn.classList.remove('playing');
-      btn.textContent = '▶';
-    });
-  });
+  fpClose.addEventListener('click', stopPreview);
 }
 
 // ===== Booking form placeholder =====

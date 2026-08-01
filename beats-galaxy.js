@@ -1,27 +1,31 @@
 // ===== Beats Galaxy =====
-// Two modes:
-//  1. Overview — all genre suns visible at once, browsable by drag/click,
-//     exactly as before.
-//  2. Tunnel — entered by clicking a sun or its pill. Every OTHER genre
-//     hides, the camera holds a fixed position looking at this genre's
-//     sun, and scrolling moves you PAST that genre's beats arranged in
-//     depth — the "looking out a spaceship window at passing planets"
-//     feel that was asked for (this is only an analogy for the motion;
-//     nothing here is styled like a spaceship).
+// Overview mode is unchanged: all genre suns visible, free drag/orbit,
+// scroll to zoom, click a sun or its pill to focus a genre.
 //
-// Tunnel mode ports the actual pooling/wrapping architecture from an
-// uploaded reference component (an "infinite gallery" of images spaced
-// along Z, cycling through a fixed-size pool of visible slots as you
-// scroll, rather than creating one element per item). That's not just
-// borrowed style — it's the specific technique needed so this still
-// performs once a genre has hundreds of beats instead of 2: at most
-// TUNNEL_POOL_SIZE DOM cards ever exist for a tunnel, and which beat
-// each slot displays advances only when that slot wraps past the end.
+// Focusing a genre no longer locks the camera into a fixed "tunnel" —
+// that was the wrong shape for what was actually asked for. Instead:
+// every OTHER genre hides, and this genre's beats appear as real 3D
+// planets (textured, lit spheres — not flat DOM cards) arranged around
+// the sun at diagonal offsets (upper/lower/middle, left/right). The
+// camera and controls behave EXACTLY like overview mode the whole time
+// — same free drag-to-orbit, same damped scroll-to-zoom, no separate
+// system — because that consistency was the actual point being made:
+// browsing one genre should feel like browsing all of them, just
+// focused and decluttered.
 //
-// Design note for future changes: createBeatCardElement() below is the
-// ONLY place that builds a beat's visual. If these become 3D planet
-// meshes instead of flat cards later, that's the one function to
-// replace — the projection/pooling/warp logic doesn't need to change.
+// Planets use a real lit material (MeshStandardMaterial) with a shared
+// moon texture (from the same public three.js example assets used in
+// an uploaded reference component) tinted per genre, which needs actual
+// scene lighting to render — added below. Clicking a planet raycasts
+// exactly like clicking a sun already did.
+//
+// Note on scale: with 12 beats total (2 per genre) it's fine for every
+// planet to exist as a real mesh all the time, just hidden via group
+// visibility. At hundreds of beats per genre, the 6 diagonal slots
+// below would need to become a proper pool (cycle which beat occupies
+// which slot, similar in spirit to how the previous attempt pooled DOM
+// cards) rather than literally one mesh per beat — flagged here for
+// whenever that's the next problem to solve, not solved yet.
 //
 // Reuses the exact star-shader pattern proven working in nebula-bg.js:
 // vertexColors:true (Three.js auto-injects the `color` attribute — do NOT
@@ -32,9 +36,8 @@
   if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') return;
 
   const container = document.getElementById('galaxy-viewport');
-  const cardsLayer = document.getElementById('galaxy-cards-layer');
   const flashEl = document.getElementById('galaxy-flash');
-  if (!container || !cardsLayer) return;
+  if (!container) return;
 
   const GENRES = [
     { id: 'trap', name: 'Trap', color: 0xff6b6b, pos: [-34, 8, -10] },
@@ -45,12 +48,8 @@
     { id: 'house', name: 'House', color: 0xff6bd6, pos: [-24, -24, -16] },
   ];
 
-  // Two beats per genre for now (per request, to see multiple-card
-  // layout before hundreds get uploaded). Each has its own license
-  // pricing — some genres priced higher (cinematic) than others,
-  // demonstrating that this is already per-beat, not a flat sitewide
-  // price. exclusive:null renders as "Inquire", matching the site's
-  // existing pattern on the general licensing tiers page.
+  // Demo beats — 2 per genre. Admin-uploaded beats (via admin.html) are
+  // layered in asynchronously further down, once their audio is resolved.
   const BEATS = [
     { genre: 'trap', title: 'Track Title One', meta: '140 BPM · F Minor', licenses: { mp3: 35, trackout: 80, exclusive: null } },
     { genre: 'trap', title: 'Track Title Seven', meta: '128 BPM · G Minor', licenses: { mp3: 30, trackout: 70, exclusive: null } },
@@ -80,6 +79,14 @@
   container.innerHTML = '';
   container.appendChild(renderer.domElement);
 
+  // Real lighting — needed for the planets' lit material to render with
+  // actual shading instead of flat black. Suns/stars use unlit materials
+  // and are unaffected by this either way.
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const sunLight = new THREE.DirectionalLight(0xffffff, 1.3);
+  sunLight.position.set(60, 90, 60);
+  scene.add(sunLight);
+
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
@@ -87,6 +94,10 @@
   controls.maxDistance = 160;
   controls.target.set(0, 0, 0);
 
+  // Custom damped zoom (OrbitControls' own wheel-zoom applies each tick
+  // instantly with no glide, unlike its drag damping) — this is the ONE
+  // scroll system, used identically whether in overview or focused on a
+  // genre. No separate "tunnel scroll."
   controls.enableZoom = false;
   let zoomVelocity = 0;
   const ZOOM_FRICTION = 0.90;
@@ -100,18 +111,10 @@
   }
   renderer.domElement.addEventListener('pointerdown', engage, { once: true });
 
-  // Wheel routes to one of two places depending on mode: the overview's
-  // damped zoom, or (once inside a genre) the tunnel's damped scroll.
-  // Not engaged yet: do nothing at all, so it scrolls the page normally.
   renderer.domElement.addEventListener('wheel', (e) => {
     if (!engaged) return;
     e.preventDefault();
-    if (tunnelActive) {
-      tunnelVelocity += e.deltaY * 0.08;
-      tunnelVelocity = Math.max(-40, Math.min(40, tunnelVelocity));
-    } else {
-      zoomVelocity += e.deltaY * 0.05;
-    }
+    zoomVelocity += e.deltaY * 0.05;
   }, { passive: false });
 
   // ---- Two-part star shader: tiny hard bright core + softer glow ----
@@ -185,10 +188,53 @@
     return points;
   })();
 
+  // Shared planet texture — loaded once, reused (with per-genre color
+  // tint via each material's own `color`) across every planet mesh.
+  // Same public three.js example asset an uploaded reference component
+  // used for its moon.
+  const textureLoader = new THREE.TextureLoader();
+  textureLoader.crossOrigin = 'anonymous';
+  const planetTexture = textureLoader.load(
+    'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg'
+  );
+
   const genreGroups = {};
   const sunMeshes = [];
   const rotatingClusters = [];
   const pulsingHalos = [];
+  const planetMeshes = []; // for raycasting clicks
+  const rotatingPlanets = []; // gentle self-rotation each frame
+
+  // 6 named diagonal slots around a sun, per request — not a straight
+  // line in front of the camera. Cycles for however many beats a genre
+  // has (currently always <= 6; see the scaling note in the file header
+  // for when a genre eventually has more than 6).
+  const ORBIT_RADIUS = 13;
+  const SLOT_OFFSETS = [
+    { x: -ORBIT_RADIUS, y: ORBIT_RADIUS * 0.55, z: 3 },   // upper left
+    { x: ORBIT_RADIUS, y: ORBIT_RADIUS * 0.55, z: -3 },   // upper right
+    { x: -ORBIT_RADIUS * 1.25, y: 0, z: 0 },              // middle left
+    { x: ORBIT_RADIUS * 1.25, y: 0, z: 0 },               // middle right
+    { x: -ORBIT_RADIUS, y: -ORBIT_RADIUS * 0.55, z: -3 }, // lower left
+    { x: ORBIT_RADIUS, y: -ORBIT_RADIUS * 0.55, z: 3 },   // lower right
+  ];
+
+  function addPlanetForBeat(beat, group, slotIndex) {
+    const genre = GENRES.find((g) => g.id === beat.genre);
+    const offset = SLOT_OFFSETS[slotIndex % SLOT_OFFSETS.length];
+    const mat = new THREE.MeshStandardMaterial({
+      map: planetTexture,
+      color: genre.color,
+      roughness: 0.85,
+      metalness: 0.05,
+    });
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(2.6, 28, 28), mat);
+    mesh.position.set(offset.x, offset.y, offset.z);
+    mesh.userData.beat = beat;
+    group.add(mesh);
+    planetMeshes.push(mesh);
+    rotatingPlanets.push(mesh);
+  }
 
   GENRES.forEach((genre) => {
     const group = new THREE.Group();
@@ -218,195 +264,45 @@
       pulsingHalos.push({ mesh: halo, baseOpacity, phase: Math.random() * Math.PI * 2 });
     });
 
-    const count = 18;
+    // Denser, flattened-disk star cluster — meant to read as an actual
+    // small galaxy/cluster around the sun (like a mini Milky Way) rather
+    // than a sparse handful of stars. Biased toward the center and
+    // flattened on Y, instead of a uniform sphere.
+    const count = 220;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const c = new THREE.Color(genre.color);
+    const pale = new THREE.Color(0xffffff);
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
-      const r = 9 + Math.random() * 10;
       const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      positions[i3] = r * Math.sin(phi) * Math.cos(theta);
-      positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      positions[i3 + 2] = r * Math.cos(phi);
-      const closeness = 1.0 - (r - 9) / 10;
-      colors[i3] = c.r; colors[i3 + 1] = c.g; colors[i3 + 2] = c.b;
-      sizes[i] = 0.7 + closeness * 1.4 + Math.random() * 0.4;
+      const radiusFactor = Math.pow(Math.random(), 0.55); // denser near center
+      const r = 6 + radiusFactor * 24;
+      const thickness = 3.5 * (1 - radiusFactor * 0.4);
+      positions[i3] = Math.cos(theta) * r;
+      positions[i3 + 1] = (Math.random() - 0.5) * thickness;
+      positions[i3 + 2] = Math.sin(theta) * r;
+
+      const closeness = 1 - radiusFactor;
+      const tinted = Math.random() < 0.45;
+      const mixed = tinted ? c : pale;
+      colors[i3] = mixed.r; colors[i3 + 1] = mixed.g; colors[i3 + 2] = mixed.b;
+      sizes[i] = 0.5 + closeness * 1.2 + Math.random() * 0.5;
     }
     const points = new THREE.Points(buildStarGeometry(count, positions, colors, sizes), starMaterial());
     group.add(points);
     rotatingClusters.push(points);
+
+    const beats = BEATS.filter((b) => b.genre === genre.id);
+    beats.forEach((beat, i) => addPlanetForBeat(beat, group, i));
   });
-
-  // ===== Beat card DOM element (shared shape for overview + tunnel) =====
-  function hexToCss(hex) {
-    return '#' + hex.toString(16).padStart(6, '0');
-  }
-
-  function createBeatCardElement() {
-    const pos = document.createElement('div');
-    pos.className = 'galaxy-beat-card-pos';
-    const el = document.createElement('div');
-    el.className = 'galaxy-beat-card';
-    el.innerHTML = `
-      <div class="galaxy-beat-thumb"></div>
-      <div class="galaxy-beat-title"></div>
-    `;
-    pos.appendChild(el);
-    cardsLayer.appendChild(pos);
-    return { pos, el, thumb: el.querySelector('.galaxy-beat-thumb'), titleEl: el.querySelector('.galaxy-beat-title') };
-  }
-
-  function beatsForGenre(genreId) {
-    return BEATS.filter((b) => b.genre === genreId);
-  }
-
-  // ===== Tunnel mode =====
-  const TUNNEL_POOL_SIZE = 8; // matches the reference component's visibleCount idea
-  const Z_SPACING = 16;
-  const NEAR_OFFSET = 5;
-  const tunnelPool = Array.from({ length: TUNNEL_POOL_SIZE }, () => {
-    const card = createBeatCardElement();
-    const slot = { ...card, z: 0, beatIndex: 0, currentBeat: null };
-    slot.el.addEventListener('click', () => {
-      if (slot.currentBeat) showBeatInfo(slot.currentBeat);
-    });
-    return slot;
-  });
-
-  let tunnelActive = false;
-  let tunnelGenreId = null;
-  let tunnelVelocity = 0;
-  const TUNNEL_FRICTION = 0.90;
-  let tunnelCamPos = new THREE.Vector3();
-  let tunnelForward = new THREE.Vector3();
-  let tunnelRight = new THREE.Vector3();
-  let tunnelUp = new THREE.Vector3();
-
-  function enterTunnel(genreId) {
-    tunnelActive = true;
-    tunnelGenreId = genreId;
-    tunnelVelocity = 0;
-
-    Object.keys(genreGroups).forEach((gid) => {
-      genreGroups[gid].visible = gid === genreId;
-    });
-
-    const beats = beatsForGenre(genreId);
-    const poolSize = Math.max(1, Math.min(TUNNEL_POOL_SIZE, beats.length));
-    tunnelPool.forEach((slot, i) => {
-      if (i < poolSize) {
-        slot.z = i * Z_SPACING;
-        slot.beatIndex = i % beats.length;
-      } else {
-        slot.el.classList.remove('visible');
-      }
-    });
-  }
-
-  function exitTunnel() {
-    tunnelActive = false;
-    tunnelGenreId = null;
-    Object.keys(genreGroups).forEach((gid) => { genreGroups[gid].visible = true; });
-    tunnelPool.forEach((slot) => slot.el.classList.remove('visible'));
-  }
-
-  function updateTunnel(delta) {
-    if (!tunnelActive) return;
-    const beats = beatsForGenre(tunnelGenreId);
-    const n = beats.length;
-    if (n === 0) return;
-    const poolSize = Math.max(1, Math.min(TUNNEL_POOL_SIZE, n));
-    const totalLength = poolSize * Z_SPACING;
-    // How far a slot's beatIndex should jump forward/back each time it
-    // wraps — ported directly from the reference component's imageAdvance
-    // formula, so a slot always advances to the next beat that isn't
-    // already showing in another slot.
-    const advance = poolSize % n || n;
-
-    for (let i = 0; i < poolSize; i++) {
-      const slot = tunnelPool[i];
-      let newZ = slot.z + tunnelVelocity * delta;
-      let wrapsForward = 0;
-      let wrapsBackward = 0;
-
-      if (newZ >= totalLength) {
-        wrapsForward = Math.floor(newZ / totalLength);
-        newZ -= totalLength * wrapsForward;
-      } else if (newZ < 0) {
-        wrapsBackward = Math.ceil(-newZ / totalLength);
-        newZ += totalLength * wrapsBackward;
-      }
-
-      if (wrapsForward > 0) {
-        slot.beatIndex = (slot.beatIndex + wrapsForward * advance) % n;
-      }
-      if (wrapsBackward > 0) {
-        const step = slot.beatIndex - wrapsBackward * advance;
-        slot.beatIndex = ((step % n) + n) % n;
-      }
-
-      slot.z = ((newZ % totalLength) + totalLength) % totalLength;
-
-      const beat = beats[slot.beatIndex];
-      if (slot.currentBeat !== beat) {
-        slot.currentBeat = beat;
-        const genre = GENRES.find((g) => g.id === beat.genre);
-        slot.titleEl.textContent = beat.title;
-        slot.thumb.style.background = `linear-gradient(160deg, ${hexToCss(genre.color)}, #0a0a0d)`;
-        slot.thumb.textContent = '♫';
-      }
-
-      if (slot.jitterX == null) slot.jitterX = (Math.random() - 0.5) * 6;
-      if (slot.jitterY == null) slot.jitterY = (Math.random() - 0.5) * 4;
-
-      const worldPos = tunnelCamPos.clone()
-        .addScaledVector(tunnelForward, slot.z + NEAR_OFFSET)
-        .addScaledVector(tunnelRight, slot.jitterX)
-        .addScaledVector(tunnelUp, slot.jitterY);
-
-      const p = worldPos.clone().project(camera);
-      const behind = p.z > 1 || p.z < -1;
-      const x = (p.x * 0.5 + 0.5) * width;
-      const y = (-p.y * 0.5 + 0.5) * height;
-      // Card distance from camera is ~(slot.z + NEAR_OFFSET) — the small
-      // perpendicular jitter barely affects it, close enough for scaling
-      // purposes. Same distance-scale idea as the overview fix, so a
-      // card doesn't stay a fixed screen size regardless of how "far
-      // away" it currently is in the tunnel.
-      const cardDistance = slot.z + NEAR_OFFSET;
-      const cardScale = Math.max(0.4, Math.min(1.4, (Z_SPACING * 0.9) / cardDistance));
-
-      // Fade + blur near both ends of this slot's local cycle — ported
-      // from the reference's fadeSettings/blurSettings pattern (blurred
-      // and faded at the extremes, sharp and opaque through the middle).
-      const norm = slot.z / totalLength;
-      let opacity = 1;
-      if (norm < 0.15) opacity = norm / 0.15;
-      else if (norm > 0.85) opacity = (1 - norm) / 0.15;
-      opacity = Math.max(0, Math.min(1, opacity));
-
-      let blurPx = 0;
-      if (norm < 0.12) blurPx = (1 - norm / 0.12) * 6;
-      else if (norm > 0.88) blurPx = ((norm - 0.88) / 0.12) * 6;
-
-      slot.pos.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${cardScale.toFixed(3)})`;
-      slot.el.style.filter = blurPx > 0.05 ? `blur(${blurPx.toFixed(1)}px)` : 'none';
-      slot.el.classList.toggle('visible', !behind && opacity > 0.03);
-      slot.el.style.opacity = String(opacity);
-    }
-
-    tunnelVelocity *= TUNNEL_FRICTION;
-    if (Math.abs(tunnelVelocity) < 0.02) tunnelVelocity = 0;
-  }
 
   // ===== Genre navigation: pills + clicking a sun both call this =====
   let activeGenreId = 'all';
   let flightId = 0;
 
-  function flyTo(targetPos, targetLookAt, duration, onDone) {
+  function flyTo(targetPos, targetLookAt, duration) {
     const myFlight = ++flightId;
     const startPos = camera.position.clone();
     const startTarget = controls.target.clone();
@@ -418,11 +314,7 @@
       camera.position.lerpVectors(startPos, targetPos, ease);
       controls.target.lerpVectors(startTarget, targetLookAt, ease);
       controls.update();
-      if (t < 1) {
-        requestAnimationFrame(step);
-      } else if (onDone) {
-        onDone();
-      }
+      if (t < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
   }
@@ -442,27 +334,20 @@
 
     if (id === 'all') {
       activeGenreId = 'all';
-      exitTunnel();
-      controls.enabled = true;
-      flyTo(new THREE.Vector3(0, 40, 100), new THREE.Vector3(0, 0, 0), 650);
+      Object.keys(genreGroups).forEach((gid) => { genreGroups[gid].visible = true; });
+      flyTo(new THREE.Vector3(0, 40, 100), new THREE.Vector3(0, 0, 0), 420);
     } else {
       const genre = GENRES.find((g) => g.id === id);
       if (!genre) return;
       activeGenreId = id;
+      Object.keys(genreGroups).forEach((gid) => { genreGroups[gid].visible = gid === id; });
       const center = new THREE.Vector3(genre.pos[0], genre.pos[1], genre.pos[2]);
-      const camPos = center.clone().add(new THREE.Vector3(0, 5, 20));
-      flyTo(camPos, center, 650, () => {
-        // Camera holds this exact position/orientation for the whole
-        // tunnel — OrbitControls is disabled so drag/orbit input can't
-        // fight the fixed "looking down the tunnel" framing.
-        controls.enabled = false;
-        tunnelCamPos.copy(camPos);
-        tunnelForward.subVectors(center, camPos).normalize();
-        const worldUp = new THREE.Vector3(0, 1, 0);
-        tunnelRight.crossVectors(tunnelForward, worldUp).normalize();
-        tunnelUp.crossVectors(tunnelRight, tunnelForward).normalize();
-        enterTunnel(id);
-      });
+      // Further back than the sun itself so the surrounding planets
+      // (which sit up to ~ORBIT_RADIUS*1.25 away) are comfortably in frame.
+      const camPos = center.clone().add(new THREE.Vector3(0, 10, 34));
+      flyTo(camPos, center, 420);
+      // Controls stay fully enabled the entire time — same free
+      // drag/orbit/zoom as overview mode, no locked camera.
     }
   }
 
@@ -470,20 +355,26 @@
     pill.addEventListener('click', () => activateGenre(pill.dataset.genre));
   });
 
-  // ===== Click a sun directly (only matters in overview mode) =====
+  // ===== Click a sun or a planet to act on it =====
   const raycaster = new THREE.Raycaster();
   const mouseVec = new THREE.Vector2();
   let dragDistance = 0;
   renderer.domElement.addEventListener('pointerdown', () => { dragDistance = 0; });
   renderer.domElement.addEventListener('pointermove', (e) => { dragDistance += Math.abs(e.movementX) + Math.abs(e.movementY); });
   renderer.domElement.addEventListener('click', (e) => {
-    if (tunnelActive || dragDistance > 6) return;
+    if (dragDistance > 6) return; // was a drag/orbit, not a click
     const rect = renderer.domElement.getBoundingClientRect();
     mouseVec.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     mouseVec.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(mouseVec, camera);
-    const hits = raycaster.intersectObjects(sunMeshes);
-    if (hits.length) activateGenre(hits[0].object.userData.genreId);
+
+    const planetHits = raycaster.intersectObjects(planetMeshes);
+    if (planetHits.length) {
+      showBeatInfo(planetHits[0].object.userData.beat);
+      return;
+    }
+    const sunHits = raycaster.intersectObjects(sunMeshes);
+    if (sunHits.length) activateGenre(sunHits[0].object.userData.genreId);
   });
 
   // ===== Beat licensing panel =====
@@ -517,7 +408,10 @@
     if (biGenre) biGenre.textContent = genre ? genre.name : beat.genre;
     if (biTitle) biTitle.textContent = beat.title;
     if (biMeta) biMeta.textContent = beat.meta;
-    if (biPlay) biPlay.dataset.name = beat.title;
+    if (biPlay) {
+      biPlay.dataset.name = beat.title;
+      biPlay.dataset.audioUrl = beat.audioUrl || '';
+    }
 
     licenseButtons.forEach((btn) => {
       const tier = btn.dataset.tier;
@@ -547,6 +441,76 @@
     closeBtn.addEventListener('click', () => panel.classList.remove('visible'));
   }
 
+  // ===== Layer in admin-uploaded beats (async — audio lives in IndexedDB) =====
+  // Beats saved through admin.html BEFORE this version won't have
+  // playable audio (that admin page only remembered the filename, not
+  // the audio data, until this update) — those will still appear here
+  // as planets, just without a working Preview button, until re-uploaded.
+  function openAdminDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('qs-admin-db', 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains('audioFiles')) {
+          req.result.createObjectStore('audioFiles');
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function getAudioBlob(db, key) {
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction('audioFiles', 'readonly');
+        const getReq = tx.objectStore('audioFiles').get(key);
+        getReq.onsuccess = () => resolve(getReq.result || null);
+        getReq.onerror = () => resolve(null);
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  }
+
+  async function loadAdminBeats() {
+    let saved = [];
+    try {
+      saved = JSON.parse(localStorage.getItem('qs-admin-beats')) || [];
+    } catch (e) {
+      saved = [];
+    }
+    if (!saved.length) return;
+
+    let db = null;
+    try {
+      db = await openAdminDB();
+    } catch (e) {
+      db = null;
+    }
+
+    for (const b of saved) {
+      if (!b.title || !GENRES.some((g) => g.id === b.genre)) continue;
+      let audioUrl = '';
+      if (db && b.audioKey) {
+        const blob = await getAudioBlob(db, b.audioKey);
+        if (blob) audioUrl = URL.createObjectURL(blob);
+      }
+      const priceNum = Number(b.price) || 30;
+      const beat = {
+        genre: b.genre,
+        title: b.title,
+        meta: `${b.bpm || '—'} BPM · ${b.key || '—'}`,
+        licenses: { mp3: priceNum, trackout: Math.round(priceNum * 2.2), exclusive: null },
+        audioUrl,
+      };
+      BEATS.push(beat);
+      const group = genreGroups[b.genre];
+      const existingCount = BEATS.filter((x) => x.genre === b.genre).length - 1;
+      addPlanetForBeat(beat, group, existingCount);
+    }
+  }
+  loadAdminBeats();
+
   window.addEventListener('resize', () => {
     width = container.clientWidth || width;
     height = container.clientHeight || height;
@@ -562,28 +526,25 @@
     const delta = clock.getDelta();
     const t = clock.getElapsedTime();
 
-    if (!tunnelActive) {
-      if (Math.abs(zoomVelocity) > 0.001) {
-        const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
-        const dist = offset.length();
-        const newDist = Math.max(controls.minDistance, Math.min(controls.maxDistance, dist + zoomVelocity));
-        offset.setLength(newDist);
-        camera.position.copy(controls.target).add(offset);
-        zoomVelocity *= ZOOM_FRICTION;
-      } else {
-        zoomVelocity = 0;
-      }
-      controls.update();
+    if (Math.abs(zoomVelocity) > 0.001) {
+      const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+      const dist = offset.length();
+      const newDist = Math.max(controls.minDistance, Math.min(controls.maxDistance, dist + zoomVelocity));
+      offset.setLength(newDist);
+      camera.position.copy(controls.target).add(offset);
+      zoomVelocity *= ZOOM_FRICTION;
+    } else {
+      zoomVelocity = 0;
     }
+    controls.update();
 
     fieldStars.rotation.y += delta * 0.01;
     rotatingClusters.forEach((pts) => { pts.rotation.y += delta * 0.15; pts.rotation.x += delta * 0.03; });
     pulsingHalos.forEach(({ mesh, baseOpacity, phase }) => {
       mesh.material.opacity = baseOpacity + Math.sin(t * 1.4 + phase) * baseOpacity * 0.3;
     });
+    rotatingPlanets.forEach((mesh) => { mesh.rotation.y += delta * 0.12; });
     starMaterials.forEach((m) => { m.uniforms.uTime.value = t; });
-
-    updateTunnel(delta);
 
     renderer.render(scene, camera);
   }
