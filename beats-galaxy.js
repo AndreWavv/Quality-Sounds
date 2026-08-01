@@ -95,13 +95,6 @@
   controls.dampingFactor = 0.08;
   controls.minDistance = 20; // clears the sun's outer halo (radius 13.5) — was 8, letting the camera clip inside it
   controls.maxDistance = 320; // more headroom to zoom out well past the overview framing distance (~176)
-  // 0 to PI is the actual full range for polar angle (there's no meaningful
-  // ">180°" for an orbit camera — beyond PI just retraces the same
-  // positions from the other side). The "hard stop" feeling at the exact
-  // poles is a gimbal-lock-like singularity in spherical coordinates —
-  // pulling back slightly from the exact top/bottom avoids it.
-  controls.minPolarAngle = 0.08;
-  controls.maxPolarAngle = Math.PI - 0.08;
   controls.target.set(0, 0, 0);
 
   // Custom damped zoom (OrbitControls' own wheel-zoom applies each tick
@@ -111,6 +104,42 @@
   controls.enableZoom = false;
   let zoomVelocity = 0;
   const ZOOM_FRICTION = 0.90;
+  const MAX_ZOOM_VELOCITY = 12;
+
+  // Rotation is fully custom too now, not OrbitControls' own drag
+  // handling — OrbitControls' internal polar-angle clamp is a hard
+  // stop with no easing at all (pulling the range in from the exact
+  // poles didn't fix the "wall" feeling, it only moved where the wall
+  // was). This mirrors the zoom fix's architecture exactly: accumulate
+  // velocity from input, decay it every frame, and soften it near the
+  // limits instead of hard-clamping.
+  controls.enableRotate = false;
+  const MIN_POLAR = 0.06;
+  const MAX_POLAR = Math.PI - 0.06;
+  const ROT_SENSITIVITY = 0.0035;
+  const ROT_FRICTION = 0.90;
+  const MAX_ROT_VELOCITY = 0.05;
+  let rotVelocityTheta = 0;
+  let rotVelocityPhi = 0;
+  let isRotDragging = false;
+  let lastPointerX = 0;
+  let lastPointerY = 0;
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    isRotDragging = true;
+    lastPointerX = e.clientX;
+    lastPointerY = e.clientY;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!isRotDragging) return;
+    const dx = e.clientX - lastPointerX;
+    const dy = e.clientY - lastPointerY;
+    lastPointerX = e.clientX;
+    lastPointerY = e.clientY;
+    rotVelocityTheta = Math.max(-MAX_ROT_VELOCITY, Math.min(MAX_ROT_VELOCITY, rotVelocityTheta - dx * ROT_SENSITIVITY));
+    rotVelocityPhi = Math.max(-MAX_ROT_VELOCITY, Math.min(MAX_ROT_VELOCITY, rotVelocityPhi - dy * ROT_SENSITIVITY));
+  });
+  window.addEventListener('pointerup', () => { isRotDragging = false; });
 
   let engaged = false;
   const engageHint = document.getElementById('galaxy-engage-hint');
@@ -125,6 +154,7 @@
     if (!engaged) return;
     e.preventDefault();
     zoomVelocity += e.deltaY * 0.05;
+    zoomVelocity = Math.max(-MAX_ZOOM_VELOCITY, Math.min(MAX_ZOOM_VELOCITY, zoomVelocity));
   }, { passive: false });
 
   // ---- Two-part star shader: tiny hard bright core + softer glow ----
@@ -228,6 +258,7 @@
   const pulsingHalos = [];
   const planetMeshes = []; // for raycasting clicks
   const rotatingPlanets = []; // gentle self-rotation each frame
+  const orbitingPlanets = []; // orbits the sun + trail update each frame
 
   // 6 named diagonal slots around a sun, per request — not a straight
   // line in front of the camera. Cycles for however many beats a genre
@@ -243,6 +274,8 @@
     { x: ORBIT_RADIUS, y: -ORBIT_RADIUS * 0.55, z: 3 },   // lower right
   ];
 
+  const TRAIL_LENGTH = 22;
+
   function addPlanetForBeat(beat, group, slotIndex) {
     const genre = GENRES.find((g) => g.id === beat.genre);
     const offset = SLOT_OFFSETS[slotIndex % SLOT_OFFSETS.length];
@@ -253,11 +286,55 @@
       metalness: 0.05,
     });
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(2.0, 28, 28), mat);
-    mesh.position.set(offset.x, offset.y, offset.z);
     mesh.userData.beat = beat;
+
+    // Orbit derived from the original diagonal slot position: radius and
+    // starting angle come from its x/z, the y offset is kept constant as
+    // it orbits (so the diagonal "height" placement per slot is
+    // preserved, just now circling the sun instead of sitting fixed).
+    const orbitRadius = Math.sqrt(offset.x * offset.x + offset.z * offset.z);
+    const orbitAngle0 = Math.atan2(offset.z, offset.x);
+    mesh.userData.orbit = {
+      radius: orbitRadius,
+      angle: orbitAngle0,
+      y: offset.y,
+      speed: 0.05 + Math.random() * 0.04, // slightly varied per planet so they don't all move in lockstep
+    };
+    mesh.position.set(offset.x, offset.y, offset.z);
     group.add(mesh);
     planetMeshes.push(mesh);
     rotatingPlanets.push(mesh);
+
+    // Trail — a Line tracing the planet's recent positions, faded toward
+    // the tail by dimming color rather than true alpha (simpler, and
+    // still reads well since it fades toward the dark background either
+    // way). History starts pre-filled at the planet's current spot so
+    // the trail doesn't visibly "grow out" from nothing on first frame.
+    const trailPositions = new Float32Array(TRAIL_LENGTH * 3);
+    const trailColors = new Float32Array(TRAIL_LENGTH * 3);
+    const trailColor = new THREE.Color(genre.color);
+    for (let i = 0; i < TRAIL_LENGTH; i++) {
+      trailPositions[i * 3] = offset.x;
+      trailPositions[i * 3 + 1] = offset.y;
+      trailPositions[i * 3 + 2] = offset.z;
+      // Index 0 = oldest/tail (dim), TRAIL_LENGTH-1 = newest/head (full
+      // brightness, right at the planet). This relationship is fixed
+      // forever — only which world position sits at which index changes
+      // each frame (via copyWithin in the animate loop), so colors are
+      // set once here and never touched again.
+      const fade = i / (TRAIL_LENGTH - 1);
+      trailColors[i * 3] = trailColor.r * fade;
+      trailColors[i * 3 + 1] = trailColor.g * fade;
+      trailColors[i * 3 + 2] = trailColor.b * fade;
+    }
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+    trailGeo.setAttribute('color', new THREE.BufferAttribute(trailColors, 3));
+    const trailMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8 });
+    const trail = new THREE.Line(trailGeo, trailMat);
+    group.add(trail);
+    mesh.userData.trail = trail;
+    orbitingPlanets.push(mesh);
   }
 
   GENRES.forEach((genre) => {
@@ -492,6 +569,7 @@
     if (biPlay) {
       biPlay.dataset.name = beat.title;
       biPlay.dataset.audioUrl = beat.audioUrl || '';
+      biPlay.dataset.genreColor = genre ? hexToCss(genre.color) : '';
     }
 
     licenseButtons.forEach((btn) => {
@@ -634,6 +712,40 @@
     } else {
       zoomVelocity = 0;
     }
+
+    if (Math.abs(rotVelocityTheta) > 0.00005 || Math.abs(rotVelocityPhi) > 0.00005) {
+      const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+      const spherical = new THREE.Spherical().setFromVector3(offset);
+
+      spherical.theta += rotVelocityTheta;
+
+      // Same soft-cushion idea as zoom: ease the applied velocity down
+      // as the polar angle approaches either limit, instead of a hard
+      // clamp with no easing at all (which is what OrbitControls' own
+      // built-in polar limit does, and why moving that limit's exact
+      // position didn't fix the "wall" feeling before).
+      const POLAR_CUSHION = 0.35;
+      let appliedPhi = rotVelocityPhi;
+      if (rotVelocityPhi < 0 && spherical.phi - MIN_POLAR < POLAR_CUSHION) {
+        appliedPhi *= Math.max(0, (spherical.phi - MIN_POLAR) / POLAR_CUSHION);
+      } else if (rotVelocityPhi > 0 && MAX_POLAR - spherical.phi < POLAR_CUSHION) {
+        appliedPhi *= Math.max(0, (MAX_POLAR - spherical.phi) / POLAR_CUSHION);
+      }
+      spherical.phi = Math.max(MIN_POLAR, Math.min(MAX_POLAR, spherical.phi + appliedPhi));
+
+      offset.setFromSpherical(spherical);
+      camera.position.copy(controls.target).add(offset);
+
+      rotVelocityTheta *= ROT_FRICTION;
+      rotVelocityPhi *= ROT_FRICTION;
+      if (spherical.phi <= MIN_POLAR || spherical.phi >= MAX_POLAR) {
+        rotVelocityPhi *= 0.5; // extra bleed-off right at the limit, same as zoom
+      }
+    } else {
+      rotVelocityTheta = 0;
+      rotVelocityPhi = 0;
+    }
+
     controls.update();
 
     fieldStars.rotation.y += delta * 0.01;
@@ -642,6 +754,19 @@
       mesh.material.opacity = baseOpacity + Math.sin(t * 1.4 + phase) * baseOpacity * 0.3;
     });
     rotatingPlanets.forEach((mesh) => { mesh.rotation.y += delta * 0.12; });
+    orbitingPlanets.forEach((mesh) => {
+      const o = mesh.userData.orbit;
+      o.angle += delta * o.speed;
+      mesh.position.set(Math.cos(o.angle) * o.radius, o.y, Math.sin(o.angle) * o.radius);
+
+      const posAttr = mesh.userData.trail.geometry.attributes.position;
+      const arr = posAttr.array;
+      arr.copyWithin(0, 3, TRAIL_LENGTH * 3); // shift every point back one slot
+      arr[(TRAIL_LENGTH - 1) * 3] = mesh.position.x;
+      arr[(TRAIL_LENGTH - 1) * 3 + 1] = mesh.position.y;
+      arr[(TRAIL_LENGTH - 1) * 3 + 2] = mesh.position.z;
+      posAttr.needsUpdate = true;
+    });
     starMaterials.forEach((m) => { m.uniforms.uTime.value = t; });
 
     renderer.render(scene, camera);

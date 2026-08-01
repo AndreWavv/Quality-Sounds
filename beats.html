@@ -150,8 +150,21 @@
 </footer>
 
 <div class="floating-player" id="floating-player">
-  <div class="fp-bars"><span></span><span></span><span></span><span></span><span></span></div>
-  <div class="fp-name" id="fp-name">Track Name</div>
+  <div class="fp-cover" id="fp-cover">♫</div>
+  <div class="fp-info">
+    <div class="fp-top-row">
+      <div class="fp-name" id="fp-name">Track Name</div>
+      <button class="fp-playpause" id="fp-playpause" aria-label="Play/Pause">▶</button>
+    </div>
+    <div class="fp-seek-row">
+      <span class="fp-time" id="fp-time-current">0:00</span>
+      <div class="fp-seek-bar" id="fp-seek-bar">
+        <div class="fp-seek-fill" id="fp-seek-fill"></div>
+        <div class="fp-seek-handle" id="fp-seek-handle"></div>
+      </div>
+      <span class="fp-time" id="fp-time-duration">0:00</span>
+    </div>
+  </div>
   <button class="fp-close" id="fp-close" aria-label="Stop preview">✕</button>
 </div>
 

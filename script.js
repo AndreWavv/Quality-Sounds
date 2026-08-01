@@ -154,8 +154,23 @@ window.addEventListener('resize', () => {
 const floatingPlayer = document.getElementById('floating-player');
 const fpName = document.getElementById('fp-name');
 const fpClose = document.getElementById('fp-close');
+const fpCover = document.getElementById('fp-cover');
+const fpPlayPause = document.getElementById('fp-playpause');
+const fpSeekBar = document.getElementById('fp-seek-bar');
+const fpSeekFill = document.getElementById('fp-seek-fill');
+const fpSeekHandle = document.getElementById('fp-seek-handle');
+const fpTimeCurrent = document.getElementById('fp-time-current');
+const fpTimeDuration = document.getElementById('fp-time-duration');
 const previewAudio = new Audio();
 let activePlayBtn = null;
+let isSeekDragging = false;
+
+function formatTime(seconds) {
+  if (!isFinite(seconds) || seconds < 0) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 function stopPreview() {
   previewAudio.pause();
@@ -165,10 +180,74 @@ function stopPreview() {
     activePlayBtn.textContent = '▶';
     activePlayBtn = null;
   }
+  if (fpPlayPause) fpPlayPause.textContent = '▶';
+  if (fpSeekFill) fpSeekFill.style.width = '0%';
+  if (fpSeekHandle) fpSeekHandle.style.left = '0%';
+  if (fpTimeCurrent) fpTimeCurrent.textContent = '0:00';
+  if (fpTimeDuration) fpTimeDuration.textContent = '0:00';
   if (floatingPlayer) floatingPlayer.classList.remove('visible');
 }
 
 previewAudio.addEventListener('ended', stopPreview);
+
+previewAudio.addEventListener('timeupdate', () => {
+  if (isSeekDragging || !previewAudio.duration) return;
+  const pct = (previewAudio.currentTime / previewAudio.duration) * 100;
+  if (fpSeekFill) fpSeekFill.style.width = `${pct}%`;
+  if (fpSeekHandle) fpSeekHandle.style.left = `${pct}%`;
+  if (fpTimeCurrent) fpTimeCurrent.textContent = formatTime(previewAudio.currentTime);
+});
+
+previewAudio.addEventListener('loadedmetadata', () => {
+  if (fpTimeDuration) fpTimeDuration.textContent = formatTime(previewAudio.duration);
+});
+
+// Seek bar — click to jump, drag to scrub. pointermove/up are attached
+// to the document (not just the bar) so dragging still tracks correctly
+// even if the pointer moves outside the bar's bounds mid-drag.
+function seekToClientX(clientX) {
+  if (!fpSeekBar || !previewAudio.duration) return;
+  const rect = fpSeekBar.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  if (fpSeekFill) fpSeekFill.style.width = `${pct * 100}%`;
+  if (fpSeekHandle) fpSeekHandle.style.left = `${pct * 100}%`;
+  if (fpTimeCurrent) fpTimeCurrent.textContent = formatTime(pct * previewAudio.duration);
+  return pct;
+}
+
+if (fpSeekBar) {
+  fpSeekBar.addEventListener('pointerdown', (e) => {
+    if (!previewAudio.duration) return;
+    isSeekDragging = true;
+    seekToClientX(e.clientX);
+  });
+}
+document.addEventListener('pointermove', (e) => {
+  if (!isSeekDragging) return;
+  seekToClientX(e.clientX);
+});
+document.addEventListener('pointerup', (e) => {
+  if (!isSeekDragging) return;
+  isSeekDragging = false;
+  const pct = seekToClientX(e.clientX);
+  if (pct !== undefined && previewAudio.duration) {
+    previewAudio.currentTime = pct * previewAudio.duration;
+  }
+});
+
+function togglePlayPause() {
+  if (!previewAudio.src) return;
+  if (previewAudio.paused) {
+    previewAudio.play().catch(() => {});
+    if (fpPlayPause) fpPlayPause.textContent = '❚❚';
+    if (activePlayBtn) { activePlayBtn.classList.add('playing'); activePlayBtn.textContent = '❚❚'; }
+  } else {
+    previewAudio.pause();
+    if (fpPlayPause) fpPlayPause.textContent = '▶';
+    if (activePlayBtn) { activePlayBtn.classList.remove('playing'); activePlayBtn.textContent = '▶'; }
+  }
+}
+if (fpPlayPause) fpPlayPause.addEventListener('click', togglePlayPause);
 
 document.querySelectorAll('.beat-play').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -201,6 +280,11 @@ document.querySelectorAll('.beat-play').forEach((btn) => {
       fpName.textContent = btn.dataset.name || 'Now Playing';
       floatingPlayer.classList.add('visible');
     }
+    if (fpCover) {
+      const color = btn.dataset.genreColor || 'var(--blue)';
+      fpCover.style.background = `linear-gradient(160deg, ${color}, #0a0a0d)`;
+    }
+    if (fpPlayPause) fpPlayPause.textContent = '❚❚';
 
     previewAudio.src = url;
     previewAudio.currentTime = 0;
