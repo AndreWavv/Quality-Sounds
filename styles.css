@@ -3,7 +3,7 @@
    Cinematic dark theme — blue/purple accents
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sekuya&family=Space+Mono:wght@400;700&display=swap');
 
 :root {
   --black: #0A0A0D;
@@ -18,9 +18,9 @@
   --purple-bright: #C89EFF;
   --hairline: rgba(244, 244, 247, 0.08);
 
-  --display: 'Anton', sans-serif;
-  --body: 'Hanken Grotesk', sans-serif;
-  --mono: 'IBM Plex Mono', monospace;
+  --display: 'Sekuya', sans-serif;
+  --body: 'Space Mono', monospace;
+  --mono: 'Space Mono', monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -117,6 +117,45 @@ a { color: inherit; text-decoration: none; }
   border-radius: 100px;
   padding: 8px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  /* Floats like the other cards — margin-top based, not transform, since
+     transform is already doing the fixed-position centering here and
+     (below) the hide-on-scroll slide. Two systems both wanting transform
+     on the same element is exactly the conflict pattern already worked
+     around elsewhere in this project (cards, blobs) — margin keeps this
+     one independent instead of repeating it. */
+  animation: float-card 5.5s ease-in-out infinite;
+  transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+}
+/* Hides upward on scroll-down, shown again on scroll-up or hovering
+   near the top of the viewport (see script.js). Combines with the same
+   translateX(-50%) centering rather than fighting it, since this
+   replaces the whole transform value rather than trying to stack a
+   second one. */
+.nav.nav-hidden {
+  transform: translateX(-50%) translateY(-160%);
+}
+
+/* Folded by default — just enough room for the active item — and
+   unfolds on hover to reveal the rest. */
+.nav-links {
+  max-width: 50px;
+  overflow: hidden;
+  transition: max-width 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.nav:hover .nav-links {
+  max-width: 640px;
+}
+.nav-item:not(.active) {
+  opacity: 0;
+  transform: scale(0.75);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+.nav:hover .nav-item:not(.active) {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+  transition-delay: 0.18s;
 }
 
 .nav-links {
@@ -141,8 +180,12 @@ a { color: inherit; text-decoration: none; }
   color: var(--white);
   background: rgba(255,255,255,0.08);
 }
-.nav-item:hover {
-  /* the "3D adaptive" depth — lift + shadow, on top of the icon/text flip */
+.nav:hover .nav-item:hover {
+  /* the "3D adaptive" depth — lift + shadow, on top of the icon/text flip.
+     Specificity deliberately matches .nav:hover .nav-item:not(.active)
+     (the fold-unfold rule) so this correctly wins when a specific item
+     is hovered — a plain .nav-item:hover here would lose that fight and
+     the lift effect would silently stop working once folding existed. */
   transform: scale(1.08) translateY(-3px);
   box-shadow: 0 12px 24px rgba(0,0,0,0.4), 0 2px 0 rgba(255,255,255,0.08) inset;
 }
@@ -406,6 +449,7 @@ a { color: inherit; text-decoration: none; }
 .stat-num {
   font-family: var(--display);
   font-weight: 400;
+  text-transform: uppercase;
   font-size: 2.4rem;
   background: linear-gradient(90deg, var(--blue-bright), var(--purple-bright));
   -webkit-background-clip: text;
@@ -542,12 +586,22 @@ footer {
   position: fixed;
   right: 20px;
   top: 50%;
-  transform: translateY(-50%);
   z-index: 150;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  animation: float-card 5.5s ease-in-out infinite;
+  /* Transform-based (not the shared margin-based float-card) — this
+     element has no other competing transform usage, so compositor-only
+     animation is safe here and fixes the lag margin-animation causes
+     under load (margin changes force layout recalculation every frame;
+     transform doesn't). The centering (-50%) lives inside the keyframes
+     themselves rather than as a separate static transform, since the
+     animation fully owns this property now. */
+  animation: float-sidebar 5.5s ease-in-out infinite;
+}
+@keyframes float-sidebar {
+  0%, 100% { transform: translateY(-50%); }
+  50% { transform: translateY(calc(-50% - 10px)); }
 }
 .social-link {
   width: 38px;
@@ -719,6 +773,28 @@ footer {
 }
 .galaxy-engage-hint.hidden { opacity: 0; }
 
+.galaxy-empty-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--hairline);
+  border-radius: 100px;
+  padding: 10px 22px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--grey);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  white-space: nowrap;
+}
+.galaxy-empty-hint.visible { opacity: 1; }
+
 .galaxy-viewport { position: absolute; inset: 0; }
 .galaxy-viewport canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 .galaxy-viewport canvas:active { cursor: grabbing; }
@@ -809,6 +885,92 @@ footer {
 .license-name { font-family: var(--body); font-size: 0.85rem; font-weight: 500; }
 .license-price { font-family: var(--mono); font-size: 0.85rem; color: var(--grey); }
 .license-option.active .license-price { color: var(--purple-bright); }
+
+.bi-exclusive-link {
+  display: block;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--grey);
+  margin-top: 10px;
+  text-decoration: underline;
+}
+.bi-exclusive-link:hover { color: var(--purple-bright); }
+
+.bi-warning {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--purple-bright);
+  text-align: center;
+  margin-top: 14px;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.licensing-exclusive-note {
+  text-align: center;
+  color: var(--grey);
+  font-size: 0.85rem;
+  margin-top: 30px;
+  padding: 0 5vw;
+}
+.licensing-exclusive-note a { color: var(--purple-bright); }
+
+/* ============ LICENSE AGREEMENT MODAL ============ */
+.license-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(5, 5, 7, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  padding: 24px;
+}
+.license-modal.visible { opacity: 1; pointer-events: auto; }
+.license-modal-card {
+  position: relative;
+  background: linear-gradient(160deg, #101014, #1d1e26);
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 560px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+}
+.license-modal-text {
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--grey);
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 18px;
+  margin: 16px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.license-agree-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--grey);
+  margin: 14px 0 18px;
+  cursor: pointer;
+}
+.license-agree-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--purple-bright); flex-shrink: 0; }
+#agreement-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .beat-info-close {
   position: absolute;
@@ -1055,6 +1217,7 @@ footer {
 .tier-price {
   font-family: var(--display);
   font-weight: 400;
+  text-transform: uppercase;
   font-size: 3rem;
   margin: 14px 0;
   background-image: linear-gradient(100deg, var(--white) 35%, #ffffff 50%, var(--white) 65%);
@@ -1160,3 +1323,175 @@ footer {
 .admin-warning strong { color: var(--purple-bright); }
 .admin-warning p { color: var(--grey); font-size: 0.9rem; margin-top: 10px; line-height: 1.6; }
 #admin-gate .field { max-width: 320px; }
+
+/* ============ AUTH (Sign In / Sign Up / OTP) ============ */
+.auth-trigger {
+  position: fixed;
+  top: 26px;
+  right: 24px;
+  z-index: 101;
+  background: rgba(20, 20, 26, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--hairline);
+  border-radius: 100px;
+  padding: 12px 22px;
+  color: var(--white);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease;
+}
+.auth-trigger:hover {
+  transform: scale(1.06) translateY(-2px);
+  background: rgba(255,255,255,0.1);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.35);
+}
+@media (max-width: 700px) {
+  .auth-trigger { top: 16px; right: 16px; padding: 10px 16px; font-size: 0.65rem; }
+}
+
+.auth-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(5, 5, 7, 0.85);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  padding: 24px;
+}
+.auth-modal.visible { opacity: 1; pointer-events: auto; }
+
+/* Glass-morphism card — matches the reference's frosted, layered-glow
+   look, adapted to this site's existing blue/purple accent palette
+   instead of the reference's neutral tones. */
+.auth-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: linear-gradient(160deg, rgba(29,30,38,0.9), rgba(21,21,27,0.95));
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 24px;
+  padding: 36px 32px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.auth-modal-card::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  left: -20%;
+  right: -20%;
+  height: 70%;
+  background: radial-gradient(ellipse at center, rgba(75,110,255,0.25), rgba(157,92,255,0.15) 45%, transparent 75%);
+  filter: blur(30px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.auth-tabs {
+  display: flex;
+  background: rgba(0,0,0,0.3);
+  border-radius: 100px;
+  padding: 4px;
+  margin-bottom: 24px;
+}
+.auth-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--grey);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  padding: 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.auth-tab.active {
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  color: var(--white);
+}
+
+.auth-form .field { margin-bottom: 16px; }
+.auth-pw-field { position: relative; }
+.auth-pw-toggle {
+  position: absolute;
+  right: 12px;
+  top: 38px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  opacity: 0.6;
+}
+.auth-pw-toggle:hover { opacity: 1; }
+
+.auth-error {
+  display: none;
+  color: var(--purple-bright);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.auth-otp-screen { text-align: center; }
+.auth-otp-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+}
+.auth-otp-screen h4 {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 1.3rem;
+  margin-bottom: 6px;
+}
+.otp-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 20px 0;
+}
+.otp-digit {
+  width: 42px;
+  height: 52px;
+  text-align: center;
+  font-size: 1.3rem;
+  font-family: var(--mono);
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  color: var(--white);
+}
+.otp-digit:focus { outline: none; border-color: var(--purple-bright); }
+.auth-otp-resend {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: none;
+  border: none;
+  color: var(--grey);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  margin-top: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.auth-otp-resend:hover { color: var(--purple-bright); }

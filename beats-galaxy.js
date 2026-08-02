@@ -51,22 +51,11 @@
 
   // Demo beats — 2 per genre. Admin-uploaded beats (via admin.html) are
   // layered in asynchronously further down, once their audio is resolved.
-  const BEATS = [
-    { genre: 'trap', title: 'Track Title One', meta: '140 BPM · F Minor', licenses: { mp3: 35, trackout: 80, exclusive: null } },
-    { genre: 'trap', title: 'Track Title Seven', meta: '128 BPM · G Minor', licenses: { mp3: 30, trackout: 70, exclusive: null } },
-    { genre: 'rnb', title: 'Track Title Two', meta: '92 BPM · C# Minor', licenses: { mp3: 30, trackout: 75, exclusive: null } },
-    { genre: 'rnb', title: 'Track Title Eight', meta: '85 BPM · E Minor', licenses: { mp3: 32, trackout: 78, exclusive: null } },
-    { genre: 'indie-pop', title: 'Track Title Three', meta: '102 BPM · G Major', licenses: { mp3: 25, trackout: 65, exclusive: null } },
-    { genre: 'indie-pop', title: 'Track Title Nine', meta: '110 BPM · D Major', licenses: { mp3: 28, trackout: 68, exclusive: null } },
-    { genre: '2000s-swag', title: 'Track Title Four', meta: '98 BPM · D Minor', licenses: { mp3: 30, trackout: 72, exclusive: null } },
-    { genre: '2000s-swag', title: 'Track Title Ten', meta: '95 BPM · A Minor', licenses: { mp3: 30, trackout: 72, exclusive: null } },
-    { genre: 'cinematic', title: 'Track Title Five', meta: '70 BPM · A Minor', licenses: { mp3: 45, trackout: 95, exclusive: null } },
-    { genre: 'cinematic', title: 'Track Title Eleven', meta: '65 BPM · F Minor', licenses: { mp3: 48, trackout: 98, exclusive: null } },
-    { genre: 'house', title: 'Track Title Six', meta: '124 BPM · A Minor', licenses: { mp3: 30, trackout: 70, exclusive: null } },
-    { genre: 'house', title: 'Track Title Twelve', meta: '126 BPM · C Minor', licenses: { mp3: 32, trackout: 72, exclusive: null } },
-    { genre: 'synthwave', title: 'Track Title Thirteen', meta: '110 BPM · B Minor', licenses: { mp3: 32, trackout: 74, exclusive: null } },
-    { genre: 'synthwave', title: 'Track Title Fourteen', meta: '100 BPM · E Minor', licenses: { mp3: 30, trackout: 72, exclusive: null } },
-  ];
+  // Populated asynchronously from Supabase (loadBeatsFromSupabase, below)
+  // — no more hardcoded demo tracks. Until real beats exist in the
+  // `beats` table, genres will correctly show zero planets rather than
+  // fake placeholder data a real visitor could be confused by.
+  let BEATS = [];
 
   let width = container.clientWidth || 800;
   let height = container.clientHeight || 620;
@@ -503,6 +492,8 @@
       activeGenreId = 'all';
       Object.keys(genreGroups).forEach((gid) => { genreGroups[gid].visible = true; });
       flyTo(new THREE.Vector3(0, 60, 165), new THREE.Vector3(0, 0, 0), 420);
+      const emptyHint = document.getElementById('galaxy-empty-hint');
+      if (emptyHint) emptyHint.classList.remove('visible');
     } else {
       const genre = GENRES.find((g) => g.id === id);
       if (!genre) return;
@@ -515,6 +506,13 @@
       flyTo(camPos, center, 420);
       // Controls stay fully enabled the entire time — same free
       // drag/orbit/zoom as overview mode, no locked camera.
+
+      const emptyHint = document.getElementById('galaxy-empty-hint');
+      if (emptyHint) {
+        const hasBeats = BEATS.some((b) => b.genre === id);
+        emptyHint.textContent = `No ${genre.name} beats in the catalog yet — check back soon.`;
+        emptyHint.classList.toggle('visible', !hasBeats);
+      }
     }
   }
 
@@ -543,6 +541,58 @@
     const sunHits = raycaster.intersectObjects(sunMeshes);
     if (sunHits.length) activateGenre(sunHits[0].object.userData.genreId);
   });
+
+  // ===== License terms (confirmed terms — see chat for the full negotiation) =====
+  const LICENSE_TERMS = {
+    mp3: { name: 'MP3 Lease', streams: '30,000', downloads: '2,000', videos: '1', files: 'a high-quality MP3' },
+    wav: { name: 'WAV Lease', streams: '100,000', downloads: '5,000', videos: '2', files: 'MP3 and WAV files' },
+    stems: { name: 'Stems Lease', streams: '250,000', downloads: '10,000', videos: '3', files: 'MP3, trackout stems, and WAV files' },
+  };
+
+  function buildContractText(beat, tierKey, buyerName, dateStr) {
+    const t = LICENSE_TERMS[tierKey];
+    return `NON-EXCLUSIVE MUSIC LICENSE AGREEMENT
+
+This Non-Exclusive License Agreement ("Agreement") is entered into as of ${dateStr}, by and between Andre.Wavv ("Licensor") and ${buyerName} ("Licensee").
+
+1. GRANT OF LICENSE
+Licensor grants Licensee a non-exclusive, non-transferable, revocable license to use the instrumental composition titled "${beat.title}" ("Beat") under the ${t.name} tier, according to the terms below.
+
+2. RIGHTS GRANTED
+Licensee may:
+- Record vocals and create one new song ("Licensed Work") using the Beat.
+- Distribute and monetize the Licensed Work up to ${t.streams} streams and/or ${t.downloads} downloads.
+- Use the Licensed Work in up to ${t.videos} music video(s).
+- Perform the Licensed Work publicly, including live performances for profit.
+- Use the Licensed Work for monetized YouTube and DSP distribution (Spotify, Apple Music, etc.).
+
+3. RESTRICTIONS
+Licensee may not:
+- Register the Beat or Licensed Work with any Content ID system or copyright office as their own.
+- Sell, sublicense, or transfer rights to any third party.
+- Use the Beat for TV, film, commercial ads, or games without additional written permission.
+- Claim exclusive rights or remove producer tags/credits.
+
+4. OWNERSHIP
+Licensor retains 100% ownership and copyright of the composition and sound recording. Licensee receives only the usage rights stated above.
+
+5. PUBLISHING & ROYALTIES
+If the Licensed Work is commercially released, publishing shall be split 50% Writer (Licensee) / 50% Producer (Licensor) unless otherwise agreed in writing. Both parties shall register their respective shares with their PROs. Licensee shall credit the producer as "Produced by Andre.Wavv" in all distributions and metadata.
+
+6. TERM
+This license is valid for 2 years from the Effective Date and expires automatically unless renewed. Continued use of the Licensed Work beyond this term requires purchasing a new license at the then-current price.
+
+7. DELIVERY
+Upon payment, Licensor shall deliver ${t.files}.
+
+8. TERMINATION
+This license terminates automatically upon breach of any condition herein. Licensor reserves the right to revoke the license if these terms are violated.
+
+9. GOVERNING LAW
+This Agreement is governed by the laws of the State of Illinois, USA.
+
+By typing your name below and checking the agreement box, you are electronically signing this Agreement.`;
+  }
 
   // ===== Beat licensing panel =====
   const panel = document.getElementById('beat-info-panel');
@@ -601,12 +651,105 @@
 
   if (biBuy) {
     biBuy.addEventListener('click', () => {
-      alert('Checkout isn\'t connected to real payment processing yet — this is where Stripe Checkout will go once that\'s wired up.');
+      if (!currentPanelBeat) return;
+      openAgreementModal(currentPanelBeat, selectedTier);
+    });
+  }
+
+  const biExclusive = document.getElementById('bi-exclusive-inquire');
+  if (biExclusive) {
+    biExclusive.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!currentPanelBeat) return;
+      const subject = encodeURIComponent(`Exclusive inquiry — ${currentPanelBeat.title}`);
+      const body = encodeURIComponent(`Hi Andre,\n\nI'm interested in exclusive rights for "${currentPanelBeat.title}". Let's talk terms.\n\n`);
+      window.location.href = `mailto:andre.wavbusiness@gmail.com?subject=${subject}&body=${body}`;
     });
   }
 
   if (closeBtn) {
     closeBtn.addEventListener('click', () => panel.classList.remove('visible'));
+  }
+
+  // ===== License agreement modal =====
+  const agreementModal = document.getElementById('agreement-modal');
+  const agreementText = document.getElementById('agreement-text');
+  const agreementTierLabel = document.getElementById('agreement-tier-label');
+  const agreementPriceLabel = document.getElementById('agreement-price-label');
+  const agreementNameInput = document.getElementById('agreement-name');
+  const agreementCheckbox = document.getElementById('agreement-checkbox');
+  const agreementConfirmBtn = document.getElementById('agreement-confirm');
+  const agreementCancelBtn = document.getElementById('agreement-cancel');
+
+  let agreementBeat = null;
+  let agreementTier = null;
+
+  function updateAgreementConfirmState() {
+    if (!agreementConfirmBtn) return;
+    const nameOk = agreementNameInput && agreementNameInput.value.trim().length > 1;
+    const checkOk = agreementCheckbox && agreementCheckbox.checked;
+    agreementConfirmBtn.disabled = !(nameOk && checkOk);
+  }
+
+  function openAgreementModal(beat, tierKey) {
+    agreementBeat = beat;
+    agreementTier = tierKey;
+    const t = LICENSE_TERMS[tierKey];
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    if (agreementTierLabel) agreementTierLabel.textContent = t.name;
+    if (agreementPriceLabel) agreementPriceLabel.textContent = formatPrice(beat.licenses[tierKey]);
+    if (agreementText) agreementText.textContent = buildContractText(beat, tierKey, '_________________', today);
+    if (agreementNameInput) agreementNameInput.value = '';
+    if (agreementCheckbox) agreementCheckbox.checked = false;
+    updateAgreementConfirmState();
+    if (agreementModal) agreementModal.classList.add('visible');
+  }
+
+  function closeAgreementModal() {
+    if (agreementModal) agreementModal.classList.remove('visible');
+  }
+
+  if (agreementNameInput) agreementNameInput.addEventListener('input', updateAgreementConfirmState);
+  if (agreementCheckbox) agreementCheckbox.addEventListener('change', updateAgreementConfirmState);
+  if (agreementCancelBtn) agreementCancelBtn.addEventListener('click', closeAgreementModal);
+
+  if (agreementConfirmBtn) {
+    agreementConfirmBtn.addEventListener('click', async () => {
+      if (agreementConfirmBtn.disabled || !agreementBeat) return;
+      const fullName = agreementNameInput.value.trim();
+      const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      // IP is part of the signature record we agreed on. Client-side JS
+      // has no direct way to read the visitor's public IP — this calls a
+      // public lookup service for it, same technique most sites use for
+      // this. If it fails (network blocked, offline, etc.) we still let
+      // the agreement proceed rather than block a sale over it.
+      let ip = 'unavailable';
+      try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        if (data && data.ip) ip = data.ip;
+      } catch (e) {
+        // proceed without it
+      }
+
+      const agreementRecord = {
+        beat_id: agreementBeat.title, // placeholder key until real beat IDs come from Supabase
+        license_type: agreementTier,
+        price_paid: agreementBeat.licenses[agreementTier],
+        agreed_full_name: fullName,
+        agreed_at: new Date().toISOString(),
+        agreed_ip: ip,
+        license_agreement_snapshot: buildContractText(agreementBeat, agreementTier, fullName, today),
+      };
+
+      closeAgreementModal();
+      // Staged and ready for the Stripe step — not yet sent anywhere,
+      // since checkout isn't wired up yet. Logged so it's inspectable
+      // during testing rather than silently discarded.
+      console.log('Agreement captured, ready for checkout once Stripe is wired up:', agreementRecord);
+      alert(`Thanks, ${fullName} — your agreement was recorded. Checkout isn't connected to real payment processing yet, so this is where Stripe would take over once that's wired up.`);
+    });
   }
 
   // ===== Layer in admin-uploaded beats (async — audio lives in IndexedDB) =====
@@ -668,7 +811,7 @@
         genre: b.genre,
         title: b.title,
         meta: `${b.bpm || '—'} BPM · ${b.key || '—'}`,
-        licenses: { mp3: priceNum, trackout: Math.round(priceNum * 2.2), exclusive: null },
+        licenses: { mp3: priceNum, wav: Math.round(priceNum * 2.2), stems: Math.round(priceNum * 3) },
         audioUrl,
       };
       BEATS.push(beat);
@@ -678,6 +821,40 @@
     }
   }
   loadAdminBeats();
+
+  // ===== Real beats data from Supabase =====
+  async function loadBeatsFromSupabase() {
+    if (!window.qsClient) {
+      console.error('Supabase client not available — check supabase-client.js loaded correctly.');
+      return;
+    }
+    const { data, error } = await window.qsClient.from('beats').select('*');
+    if (error) {
+      console.error('Failed to load beats from Supabase:', error.message);
+      return;
+    }
+    (data || []).forEach((row) => {
+      if (!row.title || !GENRES.some((g) => g.id === row.genre)) return; // skip rows with an unrecognized genre slug rather than crash
+      const beat = {
+        id: row.id,
+        genre: row.genre,
+        title: row.title,
+        meta: `${row.bpm || '—'} BPM · ${row.key || '—'}`,
+        licenses: {
+          mp3: Number(row.mp3_price),
+          wav: Number(row.wav_price),
+          stems: Number(row.stems_price),
+        },
+        audioUrl: row.audio_file_url || '',
+        coverArtUrl: row.cover_art_url || '',
+      };
+      BEATS.push(beat);
+      const group = genreGroups[row.genre];
+      const existingCount = BEATS.filter((x) => x.genre === row.genre).length - 1;
+      addPlanetForBeat(beat, group, existingCount);
+    });
+  }
+  loadBeatsFromSupabase();
 
   window.addEventListener('resize', () => {
     width = container.clientWidth || width;

@@ -263,7 +263,7 @@ document.querySelectorAll('.beat-play').forEach((btn) => {
     // audioUrl every time a different beat's panel opens.
     const url = btn.dataset.audioUrl || '';
     if (!url) {
-      alert('No audio file is attached to this beat yet.');
+      alert('No audio file is attached yet.');
       return;
     }
 
@@ -306,6 +306,44 @@ if (bookingForm) {
   bookingForm.addEventListener('submit', (e) => {
     e.preventDefault();
     alert('This form isn\'t connected to anything yet — hook it up to Formspree, a mailto link, or your own backend to start receiving requests.');
+  });
+}
+
+// ===== Custom beat inquiry form — real Supabase wiring =====
+const customInquiryForm = document.getElementById('custom-inquiry-form');
+if (customInquiryForm) {
+  customInquiryForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const statusEl = document.getElementById('ci-status');
+    const submitBtn = customInquiryForm.querySelector('button[type="submit"]');
+    if (!window.qsClient) {
+      if (statusEl) { statusEl.textContent = 'Something went wrong loading the form — please try again shortly.'; statusEl.style.display = 'block'; }
+      return;
+    }
+    const name = document.getElementById('ci-name').value.trim();
+    const email = document.getElementById('ci-email').value.trim();
+    const description = document.getElementById('ci-description').value.trim();
+    const deal = document.getElementById('ci-deal').value;
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Sending...'; }
+
+    const { error } = await window.qsClient.from('custom_inquiries').insert({
+      name,
+      email,
+      project_description: description,
+      deal_preference: deal,
+    });
+
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Send Inquiry'; }
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      if (error) {
+        statusEl.textContent = `Something went wrong: ${error.message}. Please try again.`;
+      } else {
+        statusEl.textContent = 'Sent! You\'ll hear back soon.';
+        customInquiryForm.reset();
+      }
+    }
   });
 }
 
@@ -402,6 +440,38 @@ setupTilt('.tier', -6, 5);
       popup.classList.remove('visible');
     });
   }
+})();
+
+// ===== Nav hide-on-scroll, reveal near top =====
+(function () {
+  const nav = document.getElementById('site-nav');
+  if (!nav) return;
+
+  let lastScrollY = window.scrollY;
+  let hidden = false;
+  const HIDE_THRESHOLD = 120; // don't hide until scrolled at least this far, so it doesn't flicker right at the top
+
+  function setHidden(next) {
+    if (next === hidden) return;
+    hidden = next;
+    nav.classList.toggle('nav-hidden', hidden);
+  }
+
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    if (y > lastScrollY && y > HIDE_THRESHOLD) {
+      setHidden(true);
+    } else if (y < lastScrollY) {
+      setHidden(false);
+    }
+    lastScrollY = y;
+  }, { passive: true });
+
+  // Hovering near the very top of the viewport reveals it even mid-scroll,
+  // like a drawer you can peek back out.
+  window.addEventListener('mousemove', (e) => {
+    if (e.clientY < 60) setHidden(false);
+  }, { passive: true });
 })();
 
 // ===== Nav tubelight indicator =====
