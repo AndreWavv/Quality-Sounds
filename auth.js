@@ -65,7 +65,7 @@
 
   openBtns.forEach((btn) => btn.addEventListener('click', () => {
     if (isSignedIn) {
-      openAccountModal();
+      window.location.href = 'account.html';
     } else {
       openModal();
     }
@@ -157,37 +157,4 @@
     });
   });
 
-  // ===== Account modal (favorites / playlists) =====
-  const accountModal = document.getElementById('account-modal');
-  const accountClose = document.getElementById('account-close');
-  const accountTabFav = document.getElementById('account-tab-favorites');
-  const accountTabPlaylists = document.getElementById('account-tab-playlists');
-  const accountFavPanel = document.getElementById('account-favorites-panel');
-  const accountPlaylistsPanel = document.getElementById('account-playlists-panel');
-
-  function openAccountModal() {
-    if (!accountModal) return;
-    accountModal.classList.add('visible');
-    showAccountFavorites();
-    if (window.qsLibrary) window.qsLibrary.refreshFavorites();
-    if (window.qsLibrary) window.qsLibrary.refreshPlaylists();
-  }
-  function closeAccountModal() {
-    if (accountModal) accountModal.classList.remove('visible');
-  }
-  function showAccountFavorites() {
-    if (accountTabFav) accountTabFav.classList.add('active');
-    if (accountTabPlaylists) accountTabPlaylists.classList.remove('active');
-    if (accountFavPanel) accountFavPanel.style.display = 'block';
-    if (accountPlaylistsPanel) accountPlaylistsPanel.style.display = 'none';
-  }
-  function showAccountPlaylists() {
-    if (accountTabPlaylists) accountTabPlaylists.classList.add('active');
-    if (accountTabFav) accountTabFav.classList.remove('active');
-    if (accountPlaylistsPanel) accountPlaylistsPanel.style.display = 'block';
-    if (accountFavPanel) accountFavPanel.style.display = 'none';
-  }
-  if (accountClose) accountClose.addEventListener('click', closeAccountModal);
-  if (accountTabFav) accountTabFav.addEventListener('click', showAccountFavorites);
-  if (accountTabPlaylists) accountTabPlaylists.addEventListener('click', showAccountPlaylists);
 })();

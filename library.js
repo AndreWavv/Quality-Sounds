@@ -115,18 +115,25 @@
       <div class="library-playlist">
         <div class="library-row">
           <strong>${escapeHtml(p.name)}</strong>
-          <button type="button" class="beat-info-close" data-delete-playlist="${escapeHtml(p.id)}" aria-label="Delete playlist">✕</button>
         </div>
         <div class="meta">
           ${(p.playlist_beats || []).length
             ? p.playlist_beats.map((pb) => escapeHtml(pb.beats ? pb.beats.title : 'Unknown')).join(', ')
             : 'Empty'}
         </div>
+        <button type="button" class="library-delete-link" data-delete-playlist="${escapeHtml(p.id)}" data-playlist-name="${escapeHtml(p.name)}">Delete this playlist</button>
       </div>
     `).join('');
+    // Deliberately no quick "X" button — that's an easy accidental click
+    // when trying to close something else nearby. Deletion requires
+    // typing the exact playlist name back, the same friction pattern
+    // GitHub uses for deleting a repo, specifically so it can't happen
+    // by mistake.
     listEl.querySelectorAll('[data-delete-playlist]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this playlist?')) return;
+        const name = btn.dataset.playlistName;
+        const typed = prompt(`Type "${name}" to permanently delete this playlist:`);
+        if (typed !== name) return;
         await window.qsClient.from('playlists').delete().eq('id', btn.dataset.deletePlaylist);
         refreshPlaylists();
       });

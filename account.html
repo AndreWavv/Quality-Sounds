@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Account — Quality Sounds</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a href="index.html" class="admin-back-link">← Back to Site</a>
+
+<header class="page-head">
+  <div class="hero-eyebrow">Account</div>
+  <h1>My Library</h1>
+  <p>Your favorites and playlists.</p>
+</header>
+
+<section class="form-section" style="padding-top: 0; max-width: 720px;">
+
+  <div id="account-signed-out" style="text-align:center; display:none;">
+    <p class="meta">Sign in from the main site to see your account.</p>
+  </div>
+
+  <div id="account-loading" style="text-align:center;">
+    <p class="meta">Loading...</p>
+  </div>
+
+  <div id="account-content" style="display:none;">
+    <div class="auth-tabs">
+      <button type="button" id="account-tab-favorites" class="auth-tab active">Favorites</button>
+      <button type="button" id="account-tab-playlists" class="auth-tab">Playlists</button>
+    </div>
+
+    <div id="account-favorites-panel">
+      <div id="favorites-list"><p class="meta">Loading...</p></div>
+    </div>
+
+    <div id="account-playlists-panel" style="display:none;">
+      <form id="create-playlist-form" style="display:flex; gap:8px; margin-bottom:20px;">
+        <input type="text" id="new-playlist-name" placeholder="New playlist name" style="flex:1;" required>
+        <button type="submit" class="btn solid">Create</button>
+      </form>
+      <div id="playlists-list"><p class="meta">Loading...</p></div>
+    </div>
+
+    <button class="btn solid" id="account-sign-out" data-sign-out style="width:100%; justify-content:center; margin-top:30px;">Sign Out</button>
+  </div>
+
+</section>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="library.js" defer></script>
+<script src="account.js" defer></script>
+</body>
+</html>
