@@ -715,6 +715,20 @@ By typing your name below and checking the agreement box, you are electronically
       window.location.href = `mailto:andre.wavbusiness@gmail.com?subject=${subject}&body=${body}`;
     });
   }
+  const biExclusiveCopy = document.getElementById('bi-exclusive-copy');
+  if (biExclusiveCopy) {
+    biExclusiveCopy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText('andre.wavbusiness@gmail.com');
+        const original = biExclusiveCopy.textContent;
+        biExclusiveCopy.textContent = 'Copied!';
+        setTimeout(() => { biExclusiveCopy.textContent = original; }, 2000);
+      } catch (e) {
+        // Clipboard API can fail (older browser, permissions) — the
+        // email is already visible as plain text either way.
+      }
+    });
+  }
 
   if (closeBtn) {
     closeBtn.addEventListener('click', () => panel.classList.remove('visible'));

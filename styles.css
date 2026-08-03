@@ -103,147 +103,108 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ============ NAV (dock-style, with icon/text flip + tubelight) ============ */
+/* ============ NAV (vertical dropdown, replacing the horizontal
+   fold-to-fit-active-item approach after repeated centering bugs) ============ */
 .nav {
   position: fixed;
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
-  display: flex;
-  align-items: center;
-  background: rgba(20, 20, 26, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--hairline);
-  border-radius: 100px;
-  padding: 8px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
-  /* Floats like the other cards — margin-top based, not transform, since
-     transform is already doing the fixed-position centering here and
-     (below) the hide-on-scroll slide. Two systems both wanting transform
-     on the same element is exactly the conflict pattern already worked
-     around elsewhere in this project (cards, blobs) — margin keeps this
-     one independent instead of repeating it. */
   animation: float-card 5.5s ease-in-out infinite;
   transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
 }
-/* Hides upward on scroll-down, shown again on scroll-up or hovering
-   near the top of the viewport (see script.js). Combines with the same
-   translateX(-50%) centering rather than fighting it, since this
-   replaces the whole transform value rather than trying to stack a
-   second one. */
 .nav.nav-hidden {
   transform: translateX(-50%) translateY(-160%);
 }
 
-/* Folded by default — collapses non-active items to zero width AND
-   padding (not just opacity), so the pill naturally sizes to fit
-   whichever item is actually active — this works correctly regardless
-   of which page/item that is. The previous version guessed a fixed
-   50px container width, which was smaller than some items' actual
-   rendered width (confirmed: the Home item alone measured 96px),
-   silently clipping content and throwing off centering. */
-.nav-item:not(.active) {
-  max-width: 0;
-  padding-left: 0;
-  padding-right: 0;
-  opacity: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transition: max-width 0.4s cubic-bezier(0.65, 0, 0.35, 1), padding-left 0.4s cubic-bezier(0.65, 0, 0.35, 1), padding-right 0.4s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, color 0.2s ease, box-shadow 0.25s ease;
-}
-.nav:hover .nav-item:not(.active) {
-  max-width: 200px;
-  padding-left: 14px;
-  padding-right: 14px;
-  opacity: 1;
-  pointer-events: auto;
-  transition-delay: 0.12s;
-}
-
-.nav-links {
-  display: flex;
-  gap: 2px;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  position: relative;
-}
-
-.nav-item {
-  color: var(--grey);
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, color 0.2s ease, box-shadow 0.25s ease;
-  position: relative;
-  padding: 10px 14px;
-  border-radius: 100px;
-  display: block;
-}
-.nav-item:hover, .nav-item.active {
-  color: var(--white);
-  background: rgba(255,255,255,0.08);
-}
-.nav:hover .nav-item:hover {
-  /* the "3D adaptive" depth — lift + shadow, on top of the icon/text flip.
-     Specificity deliberately matches .nav:hover .nav-item:not(.active)
-     (the fold-unfold rule) so this correctly wins when a specific item
-     is hovered — a plain .nav-item:hover here would lose that fight and
-     the lift effect would silently stop working once folding existed. */
-  transform: scale(1.08) translateY(-3px);
-  box-shadow: 0 12px 24px rgba(0,0,0,0.4), 0 2px 0 rgba(255,255,255,0.08) inset;
-}
-
-/* Icon shown by default; hovering flips it away (cube-style, rotating
-   around the Y axis) to reveal the text label on the other face. */
-.nav-flip {
-  position: relative;
-  display: block;
-  width: var(--flip-w, 70px);
-  height: 16px;
-  perspective: 500px;
-}
-.nav-face {
-  position: absolute;
-  inset: 0;
+.nav-trigger {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(20, 20, 26, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
   display: flex;
   align-items: center;
   justify-content: center;
-  backface-visibility: hidden;
-  transition: transform 0.5s cubic-bezier(0.65, 0, 0.35, 1);
+  color: var(--white);
 }
-.nav-face-icon {
-  transform: rotateY(0deg);
-}
-.nav-face-icon svg { width: 15px; height: 15px; }
-.nav-face-text {
-  transform: rotateY(180deg);
-  white-space: nowrap;
-}
-.nav-glyph { font-size: 1.1rem; line-height: 1; font-family: serif; }
-.nav-item:hover .nav-face-icon { transform: rotateY(-180deg); }
-.nav-item:hover .nav-face-text { transform: rotateY(0deg); }
+.nav-trigger svg { width: 20px; height: 20px; }
+.nav-trigger .nav-glyph { font-size: 1.3rem; line-height: 1; }
 
-/* Tubelight — a glowing bar that slides to sit above whichever item is
-   active or currently hovered, positioned by JS (script.js). */
-.nav-tubelight {
+.nav-dropdown {
   position: absolute;
-  top: -14px;
-  height: 3px;
-  width: 40px;
-  left: 0;
-  border-radius: 2px;
-  background: linear-gradient(90deg, var(--blue-bright), var(--purple-bright));
-  box-shadow: 0 0 20px 4px rgba(157,92,255,0.55), 0 0 10px 2px rgba(75,110,255,0.7), 0 12px 16px 2px rgba(157,92,255,0.35);
-  transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
-  pointer-events: none;
+  top: 100%;
+  left: 50%;
+  margin-top: 10px;
+  min-width: 210px;
+  background: rgba(20, 20, 26, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  padding: 8px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
   opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(-6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.nav-tubelight.visible { opacity: 1; }
+.nav:hover .nav-dropdown, .nav:focus-within .nav-dropdown {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--grey);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+.nav-item .nav-glyph { font-size: 1.05rem; width: 16px; text-align: center; flex-shrink: 0; }
+.nav-item:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--white);
+  transform: translateX(3px);
+}
+.nav-item.active {
+  background: rgba(157,92,255,0.15);
+  color: var(--purple-bright);
+}
 
 .nav-item:focus-visible, button:focus-visible, .btn:focus-visible {
   outline: 2px solid var(--purple-bright);
   outline-offset: 3px;
 }
-@media (max-width: 760px) { .nav-links { display: none; } }
+.admin-back-link {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  z-index: 100;
+  color: var(--grey);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 10px 16px;
+  border-radius: 100px;
+  background: rgba(20, 20, 26, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--hairline);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.admin-back-link:hover { color: var(--white); border-color: var(--purple-bright); }
 
 /* ============ SINE-WAVE WORD TICKER ============ */
 /* The words are literal glyphs sitting on an SVG path via <textPath> —
@@ -889,16 +850,56 @@ footer {
 .license-price { font-family: var(--mono); font-size: 0.85rem; color: var(--grey); }
 .license-option.active .license-price { color: var(--purple-bright); }
 
-.bi-exclusive-link {
-  display: block;
+.bi-exclusive-card {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(157,92,255,0.25);
+  background: linear-gradient(160deg, rgba(157,92,255,0.08), rgba(75,110,255,0.05));
   text-align: center;
-  font-family: var(--mono);
-  font-size: 0.72rem;
+}
+.bi-exclusive-title {
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+.bi-exclusive-copy {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
   color: var(--grey);
+  font-family: var(--mono);
+  font-size: 0.68rem;
   margin-top: 10px;
+  cursor: pointer;
   text-decoration: underline;
 }
-.bi-exclusive-link:hover { color: var(--purple-bright); }
+.bi-exclusive-copy:hover { color: var(--purple-bright); }
+
+.btn-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--hairline);
+  border-radius: 100px;
+  padding: 12px 20px;
+  color: var(--white);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.btn-preview:hover { background: rgba(255,255,255,0.1); border-color: var(--purple-bright); }
+.btn-preview.playing { border-color: var(--purple-bright); color: var(--purple-bright); }
+.btn-preview-icon { display: inline-flex; width: 14px; height: 14px; flex-shrink: 0; }
+.btn-preview-icon svg { width: 100%; height: 100%; }
 
 .bi-warning {
   font-family: var(--mono);
@@ -1231,6 +1232,7 @@ footer {
   justify-content: center;
   transition: background 0.2s ease, transform 0.15s ease;
 }
+.fp-ctrl svg { width: 16px; height: 16px; }
 .fp-ctrl:hover { background: rgba(255,255,255,0.12); transform: scale(1.1); }
 .fp-ctrl.active { background: rgba(157,92,255,0.25); color: var(--purple-bright); }
 .fp-ctrl-play {
@@ -1240,6 +1242,7 @@ footer {
   color: #111;
   font-size: 1rem;
 }
+.fp-ctrl-play svg { width: 18px; height: 18px; }
 .fp-ctrl-play:hover { background: var(--white); transform: scale(1.1); }
 
 @media (max-width: 480px) {

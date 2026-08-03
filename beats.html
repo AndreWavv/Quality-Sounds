@@ -99,39 +99,14 @@
 </div>
 
 <nav class="nav" id="site-nav">
-  <div class="nav-links">
-    <a href="index.html" class="nav-item" style="--flip-w: 68px;">
-      <span class="nav-flip">
-        <span class="nav-face nav-face-icon"><svg viewBox="0 0 24 24"><defs><linearGradient id="y2k-star-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#86A6FF"/><stop offset="100%" stop-color="#C89EFF"/></linearGradient></defs><path fill="url(#y2k-star-grad)" d="M12 0C12.5 5.5 13 9 15 11C17 13 19.5 11.5 24 12C19.5 12.5 17 13 15 15C13 17 12.5 18.5 12 24C11.5 18.5 11 17 9 15C7 13 4.5 12.5 0 12C4.5 11.5 7 11 9 9C11 7 11.5 5.5 12 0Z"/></svg></span>
-        <span class="nav-face nav-face-text">Home</span>
-      </span>
-    </a>
-    <a href="beats.html" class="nav-item active" style="--flip-w: 68px;">
-      <span class="nav-flip">
-        <span class="nav-face nav-face-icon"><span class="nav-glyph">&#119070;</span></span>
-        <span class="nav-face nav-face-text">Beats</span>
-      </span>
-    </a>
-    <a href="mixing-mastering.html" class="nav-item" style="--flip-w: 168px;">
-      <span class="nav-flip">
-        <span class="nav-face nav-face-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="2" y="13" width="5" height="7" rx="1.5"/><rect x="17" y="13" width="5" height="7" rx="1.5"/></svg></span>
-        <span class="nav-face nav-face-text">Mixing &amp; Mastering</span>
-      </span>
-    </a>
-    <a href="index.html#about" class="nav-item" style="--flip-w: 76px;">
-      <span class="nav-flip">
-        <span class="nav-face nav-face-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg></span>
-        <span class="nav-face nav-face-text">About</span>
-      </span>
-    </a>
-    <a href="mixing-mastering.html#contact" class="nav-item" style="--flip-w: 84px;">
-      <span class="nav-flip">
-        <span class="nav-face nav-face-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
-        <span class="nav-face nav-face-text">Contact</span>
-      </span>
-    </a>
+  <div class="nav-trigger"><span class="nav-glyph">&#119070;</span></div>
+  <div class="nav-dropdown">
+    <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24"><defs><linearGradient id="y2k-star-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#86A6FF"/><stop offset="100%" stop-color="#C89EFF"/></linearGradient></defs><path fill="url(#y2k-star-grad)" d="M12 0C12.5 5.5 13 9 15 11C17 13 19.5 11.5 24 12C19.5 12.5 17 13 15 15C13 17 12.5 18.5 12 24C11.5 18.5 11 17 9 15C7 13 4.5 12.5 0 12C4.5 11.5 7 11 9 9C11 7 11.5 5.5 12 0Z"/></svg> <span>Home</span></a>
+    <a href="beats.html" class="nav-item active"><span class="nav-glyph">&#119070;</span> <span>Beats</span></a>
+    <a href="mixing-mastering.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="2" y="13" width="5" height="7" rx="1.5"/><rect x="17" y="13" width="5" height="7" rx="1.5"/></svg> <span>Mixing &amp; Mastering</span></a>
+    <a href="index.html#about" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg> <span>About</span></a>
+    <a href="mixing-mastering.html#contact" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg> <span>Contact</span></a>
   </div>
-  <div class="nav-tubelight" id="nav-tubelight"></div>
 </nav>
 
 <header class="page-head">
@@ -181,7 +156,12 @@
           <span class="license-price">$100</span>
         </button>
       </div>
-      <a href="#" id="bi-exclusive-inquire" class="bi-exclusive-link">Want exclusive rights instead? Inquire →</a>
+      <div class="bi-exclusive-card">
+        <div class="bi-exclusive-title">Want exclusive rights instead?</div>
+        <p class="meta">Full ownership, negotiated directly — no fixed price.</p>
+        <a href="#" id="bi-exclusive-inquire" class="btn solid" style="width:100%; justify-content:center; margin-top: 10px;">Email to Inquire</a>
+        <button type="button" id="bi-exclusive-copy" class="bi-exclusive-copy">Or copy: andre.wavbusiness@gmail.com</button>
+      </div>
 
       <div class="bi-actions-row">
         <button type="button" class="bi-icon-btn" id="bi-like" aria-label="Like">🤍 <span id="bi-like-count">0</span></button>
@@ -189,7 +169,7 @@
         <button type="button" class="bi-icon-btn" id="bi-add-playlist" aria-label="Add to playlist">➕ Playlist</button>
       </div>
 
-      <button class="btn solid beat-play" id="bi-play" data-name="" style="margin-top: 14px; width: 100%; justify-content: center;">▶ Preview</button>
+      <button class="btn-preview beat-play" id="bi-play" data-name="" style="margin-top: 14px; width: 100%; justify-content: center;"><span class="btn-preview-icon" data-icon><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg></span> Preview</button>
       <p class="bi-warning">THIS BEAT IS NOT FREE. YOU NEED TO BUY A LICENSE IN ORDER TO UPLOAD ON ANY STREAMING SERVICES.</p>
       <button type="button" class="btn solid" id="bi-buy" style="margin-top: 10px; width: 100%; justify-content: center;">Get License — <span id="bi-selected-price">$30</span></button>
     </div>
@@ -315,11 +295,11 @@
     </div>
   </div>
   <div class="fp-controls">
-    <button class="fp-ctrl" id="fp-shuffle" aria-label="Shuffle" title="Shuffle">🔀</button>
-    <button class="fp-ctrl" id="fp-prev" aria-label="Previous" title="Previous">⏮</button>
-    <button class="fp-ctrl fp-ctrl-play" id="fp-playpause" aria-label="Play/Pause">▶</button>
-    <button class="fp-ctrl" id="fp-next" aria-label="Next" title="Next">⏭</button>
-    <button class="fp-ctrl" id="fp-repeat" aria-label="Repeat" title="Repeat">🔁</button>
+    <button class="fp-ctrl" id="fp-shuffle" aria-label="Shuffle" title="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h4l7 12h4M17 3l3 3-3 3M3 18h4l3-5"/></svg></button>
+    <button class="fp-ctrl" id="fp-prev" aria-label="Previous" title="Previous"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM19 5v14l-9-7z"/></svg></button>
+    <button class="fp-ctrl fp-ctrl-play" id="fp-playpause" aria-label="Play/Pause"><span id="fp-playpause-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg></span></button>
+    <button class="fp-ctrl" id="fp-next" aria-label="Next" title="Next"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM5 5v14l9-7z"/></svg></button>
+    <button class="fp-ctrl" id="fp-repeat" aria-label="Repeat" title="Repeat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M17 2l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
   </div>
 </div>
 

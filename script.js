@@ -149,11 +149,26 @@ window.addEventListener('resize', () => {
 // ===== Floating player =====
 // One shared Audio() instance so starting a new preview always properly
 // stops whatever was playing before.
+const PLAY_ICON_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>';
+const PAUSE_ICON_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+
+// Swaps just the icon, not the whole button — setting textContent on a
+// .btn-preview button would wipe out its icon wrapper AND its "Preview"
+// label, since textContent replaces all child content. This only
+// touches the [data-icon] child (standalone Preview buttons) or the
+// #fp-playpause-icon span (the floating player's own button).
+function setPlayIcon(btn, isPlaying) {
+  if (!btn) return;
+  const iconHost = btn.querySelector('[data-icon]') || btn;
+  iconHost.innerHTML = isPlaying ? PAUSE_ICON_SVG : PLAY_ICON_SVG;
+}
+
 const floatingPlayer = document.getElementById('floating-player');
 const fpName = document.getElementById('fp-name');
 const fpClose = document.getElementById('fp-close');
 const fpCover = document.getElementById('fp-cover');
 const fpPlayPause = document.getElementById('fp-playpause');
+const fpPlayPauseIcon = document.getElementById('fp-playpause-icon');
 const fpSeekBar = document.getElementById('fp-seek-bar');
 const fpSeekFill = document.getElementById('fp-seek-fill');
 const fpSeekHandle = document.getElementById('fp-seek-handle');
@@ -197,10 +212,10 @@ function stopPreview() {
   previewAudio.removeAttribute('src');
   if (activePlayBtn) {
     activePlayBtn.classList.remove('playing');
-    activePlayBtn.textContent = '▶';
+    setPlayIcon(activePlayBtn, false);
     activePlayBtn = null;
   }
-  if (fpPlayPause) fpPlayPause.textContent = '▶';
+  setPlayIcon(fpPlayPauseIcon, false);
   if (fpSeekFill) fpSeekFill.style.width = '0%';
   if (fpSeekHandle) fpSeekHandle.style.left = '0%';
   if (fpTimeCurrent) fpTimeCurrent.textContent = '0:00';
@@ -218,10 +233,10 @@ function playTrack(track, sourceBtn, queueIndex) {
   }
   if (activePlayBtn && activePlayBtn !== sourceBtn) {
     activePlayBtn.classList.remove('playing');
-    activePlayBtn.textContent = '▶';
+    setPlayIcon(activePlayBtn, false);
   }
   activePlayBtn = sourceBtn || null;
-  if (activePlayBtn) { activePlayBtn.classList.add('playing'); activePlayBtn.textContent = '❚❚'; }
+  if (activePlayBtn) { activePlayBtn.classList.add('playing'); setPlayIcon(activePlayBtn, true); }
   currentQueueIndex = typeof queueIndex === 'number' ? queueIndex : -1;
 
   if (floatingPlayer && fpName) {
@@ -240,7 +255,7 @@ function playTrack(track, sourceBtn, queueIndex) {
       fpCover.textContent = '♫';
     }
   }
-  if (fpPlayPause) fpPlayPause.textContent = '❚❚';
+  setPlayIcon(fpPlayPauseIcon, true);
 
   previewAudio.src = track.audioUrl;
   previewAudio.currentTime = 0;
@@ -320,12 +335,12 @@ function togglePlayPause() {
   if (!previewAudio.src) return;
   if (previewAudio.paused) {
     previewAudio.play().catch(() => {});
-    if (fpPlayPause) fpPlayPause.textContent = '❚❚';
-    if (activePlayBtn) { activePlayBtn.classList.add('playing'); activePlayBtn.textContent = '❚❚'; }
+    setPlayIcon(fpPlayPauseIcon, true);
+    if (activePlayBtn) { activePlayBtn.classList.add('playing'); setPlayIcon(activePlayBtn, true); }
   } else {
     previewAudio.pause();
-    if (fpPlayPause) fpPlayPause.textContent = '▶';
-    if (activePlayBtn) { activePlayBtn.classList.remove('playing'); activePlayBtn.textContent = '▶'; }
+    setPlayIcon(fpPlayPauseIcon, false);
+    if (activePlayBtn) { activePlayBtn.classList.remove('playing'); setPlayIcon(activePlayBtn, false); }
   }
 }
 if (fpPlayPause) fpPlayPause.addEventListener('click', togglePlayPause);
@@ -424,8 +439,8 @@ if (customInquiryForm) {
 // ===== Button spotlight glow =====
 // Tracks the cursor position relative to each button and feeds it into
 // --mx/--my (used by the .btn::before radial-gradient in styles.css).
-// Only targets .btn elements, so the nav tabs at the top (a completely
-// separate .nav-links class) are unaffected.
+// Only targets .btn elements, so the nav dropdown items (a completely
+// separate .nav-item class) are unaffected.
 document.querySelectorAll('.btn').forEach((btn) => {
   btn.addEventListener('pointermove', (e) => {
     const rect = btn.getBoundingClientRect();
@@ -546,51 +561,4 @@ setupTilt('.tier', -6, 5);
   window.addEventListener('mousemove', (e) => {
     if (e.clientY < 60) setHidden(false);
   }, { passive: true });
-})();
-
-// ===== Nav tubelight indicator =====
-// Slides a glowing bar to sit above whichever nav item is hovered,
-// falling back to the active page's item when nothing is hovered.
-(function () {
-  const nav = document.getElementById('site-nav');
-  const tubelight = document.getElementById('nav-tubelight');
-  const navLinksWrap = nav ? nav.querySelector('.nav-links') : null;
-  if (!nav || !tubelight || !navLinksWrap) return;
-
-  const items = Array.from(nav.querySelectorAll('.nav-item'));
-  const activeItem = nav.querySelector('.nav-item.active') || items[0];
-
-  function moveTubelightTo(item) {
-    if (!item) return;
-    const itemRect = item.getBoundingClientRect();
-    // .nav-tubelight is a direct child of .nav (sibling to .nav-links,
-    // not nested inside it) and is position:absolute — its containing
-    // block for `left` is .nav itself, not .nav-links. Measuring
-    // relative to .nav-links was the actual bug: .nav has its own
-    // padding (8px + a 1px border), so .nav-links's left edge sits
-    // ~9px to the right of .nav's — every calculated position was off
-    // by exactly that padding, a systematic error, not a timing issue.
-    const navRect = nav.getBoundingClientRect();
-    tubelight.style.left = `${itemRect.left - navRect.left}px`;
-    tubelight.style.width = `${itemRect.width}px`;
-    tubelight.classList.add('visible');
-  }
-
-  items.forEach((item) => {
-    item.addEventListener('mouseenter', () => moveTubelightTo(item));
-  });
-  nav.addEventListener('mouseleave', () => moveTubelightTo(activeItem));
-
-  // Position immediately (avoids a flash of no-tubelight), then again
-  // once web fonts finish loading — Sekuya/Space Mono load
-  // asynchronously, and measuring position before they swap in uses
-  // fallback-font metrics, which don't match final layout. Without this,
-  // the calculated position goes stale the moment the real font loads
-  // and shifts things.
-  function initPosition() { moveTubelightTo(activeItem); }
-  requestAnimationFrame(initPosition);
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(initPosition);
-  }
-  window.addEventListener('resize', initPosition);
 })();
