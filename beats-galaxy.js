@@ -629,6 +629,7 @@ By typing your name below and checking the agreement box, you are electronically
       biPlay.dataset.name = beat.title;
       biPlay.dataset.audioUrl = beat.audioUrl || '';
       biPlay.dataset.genreColor = genre ? hexToCss(genre.color) : '';
+      biPlay.dataset.coverUrl = beat.coverArtUrl || '';
     }
 
     licenseButtons.forEach((btn) => {

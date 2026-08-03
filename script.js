@@ -281,8 +281,18 @@ document.querySelectorAll('.beat-play').forEach((btn) => {
       floatingPlayer.classList.add('visible');
     }
     if (fpCover) {
-      const color = btn.dataset.genreColor || 'var(--blue)';
-      fpCover.style.background = `linear-gradient(160deg, ${color}, #0a0a0d)`;
+      const coverUrl = btn.dataset.coverUrl || '';
+      if (coverUrl) {
+        fpCover.style.backgroundImage = `url("${coverUrl}")`;
+        fpCover.style.backgroundSize = 'cover';
+        fpCover.style.backgroundPosition = 'center';
+        fpCover.textContent = '';
+      } else {
+        const color = btn.dataset.genreColor || 'var(--blue)';
+        fpCover.style.backgroundImage = 'none';
+        fpCover.style.background = `linear-gradient(160deg, ${color}, #0a0a0d)`;
+        fpCover.textContent = '♫';
+      }
     }
     if (fpPlayPause) fpPlayPause.textContent = '❚❚';
 
@@ -500,8 +510,16 @@ setupTilt('.tier', -6, 5);
   });
   nav.addEventListener('mouseleave', () => moveTubelightTo(activeItem));
 
-  // Position on load once layout has settled, and again on resize.
+  // Position immediately (avoids a flash of no-tubelight), then again
+  // once web fonts finish loading — Sekuya/Space Mono load
+  // asynchronously, and measuring position before they swap in uses
+  // fallback-font metrics, which don't match final layout. Without this,
+  // the calculated position goes stale the moment the real font loads
+  // and shifts things.
   function initPosition() { moveTubelightTo(activeItem); }
   requestAnimationFrame(initPosition);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(initPosition);
+  }
   window.addEventListener('resize', initPosition);
 })();
