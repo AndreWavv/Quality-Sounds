@@ -146,9 +146,7 @@ window.addEventListener('resize', () => {
 // those no longer exist on the page — leaving that logic in would have
 // attached a second, redundant click handler to the same .pill buttons.
 
-// ===== Floating player (beats page) =====
-// Real playback now (previously cosmetic-only — the "playing" pulse
-// animation existed but there was no actual <audio> element anywhere).
+// ===== Floating player =====
 // One shared Audio() instance so starting a new preview always properly
 // stops whatever was playing before.
 const floatingPlayer = document.getElementById('floating-player');
@@ -161,15 +159,37 @@ const fpSeekFill = document.getElementById('fp-seek-fill');
 const fpSeekHandle = document.getElementById('fp-seek-handle');
 const fpTimeCurrent = document.getElementById('fp-time-current');
 const fpTimeDuration = document.getElementById('fp-time-duration');
+const fpShuffle = document.getElementById('fp-shuffle');
+const fpPrev = document.getElementById('fp-prev');
+const fpNext = document.getElementById('fp-next');
+const fpRepeat = document.getElementById('fp-repeat');
 const previewAudio = new Audio();
 let activePlayBtn = null;
 let isSeekDragging = false;
+let shuffleOn = false;
+let repeatOn = false;
+let currentQueueIndex = -1;
 
 function formatTime(seconds) {
   if (!isFinite(seconds) || seconds < 0) return '0:00';
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// The queue lives in beats-galaxy.js's own closure on the beats page
+// (exposed globally since this is a separate script and can't reach in
+// directly). On pages without a galaxy (Mixing/Mastering), fall back to
+// whatever .beat-play buttons actually exist on the page.
+function getQueue() {
+  if (window.qsBeatsQueue && window.qsBeatsQueue.length) return window.qsBeatsQueue;
+  return Array.from(document.querySelectorAll('.beat-play')).map((btn) => ({
+    name: btn.dataset.name || 'Track',
+    audioUrl: btn.dataset.audioUrl || '',
+    coverUrl: btn.dataset.coverUrl || '',
+    genreColor: btn.dataset.genreColor || '',
+    _btn: btn,
+  }));
 }
 
 function stopPreview() {
@@ -186,9 +206,70 @@ function stopPreview() {
   if (fpTimeCurrent) fpTimeCurrent.textContent = '0:00';
   if (fpTimeDuration) fpTimeDuration.textContent = '0:00';
   if (floatingPlayer) floatingPlayer.classList.remove('visible');
+  currentQueueIndex = -1;
 }
 
-previewAudio.addEventListener('ended', stopPreview);
+// Central place that actually starts playback + updates the UI — both
+// clicking a .beat-play button and using prev/next/shuffle end up here.
+function playTrack(track, sourceBtn, queueIndex) {
+  if (!track || !track.audioUrl) {
+    alert('No audio file is attached yet.');
+    return;
+  }
+  if (activePlayBtn && activePlayBtn !== sourceBtn) {
+    activePlayBtn.classList.remove('playing');
+    activePlayBtn.textContent = '▶';
+  }
+  activePlayBtn = sourceBtn || null;
+  if (activePlayBtn) { activePlayBtn.classList.add('playing'); activePlayBtn.textContent = '❚❚'; }
+  currentQueueIndex = typeof queueIndex === 'number' ? queueIndex : -1;
+
+  if (floatingPlayer && fpName) {
+    fpName.textContent = track.name || 'Now Playing';
+    floatingPlayer.classList.add('visible');
+  }
+  if (fpCover) {
+    if (track.coverUrl) {
+      fpCover.style.backgroundImage = `url("${track.coverUrl}")`;
+      fpCover.style.backgroundSize = 'cover';
+      fpCover.style.backgroundPosition = 'center';
+      fpCover.textContent = '';
+    } else {
+      fpCover.style.backgroundImage = 'none';
+      fpCover.style.background = `linear-gradient(160deg, ${track.genreColor || 'var(--blue)'}, #0a0a0d)`;
+      fpCover.textContent = '♫';
+    }
+  }
+  if (fpPlayPause) fpPlayPause.textContent = '❚❚';
+
+  previewAudio.src = track.audioUrl;
+  previewAudio.currentTime = 0;
+  previewAudio.play().catch(() => stopPreview());
+}
+
+function playAdjacent(direction) {
+  const queue = getQueue();
+  if (!queue.length) return;
+  let nextIndex;
+  if (shuffleOn) {
+    nextIndex = Math.floor(Math.random() * queue.length);
+  } else if (currentQueueIndex === -1) {
+    nextIndex = 0;
+  } else {
+    nextIndex = (currentQueueIndex + direction + queue.length) % queue.length;
+  }
+  const track = queue[nextIndex];
+  playTrack(track, track._btn || null, nextIndex);
+}
+
+previewAudio.addEventListener('ended', () => {
+  if (repeatOn) {
+    previewAudio.currentTime = 0;
+    previewAudio.play().catch(() => {});
+  } else {
+    stopPreview();
+  }
+});
 
 previewAudio.addEventListener('timeupdate', () => {
   if (isSeekDragging || !previewAudio.duration) return;
@@ -249,6 +330,21 @@ function togglePlayPause() {
 }
 if (fpPlayPause) fpPlayPause.addEventListener('click', togglePlayPause);
 
+if (fpShuffle) {
+  fpShuffle.addEventListener('click', () => {
+    shuffleOn = !shuffleOn;
+    fpShuffle.classList.toggle('active', shuffleOn);
+  });
+}
+if (fpRepeat) {
+  fpRepeat.addEventListener('click', () => {
+    repeatOn = !repeatOn;
+    fpRepeat.classList.toggle('active', repeatOn);
+  });
+}
+if (fpPrev) fpPrev.addEventListener('click', () => playAdjacent(-1));
+if (fpNext) fpNext.addEventListener('click', () => playAdjacent(1));
+
 document.querySelectorAll('.beat-play').forEach((btn) => {
   btn.addEventListener('click', () => {
     const isThisAlreadyPlaying = btn === activePlayBtn && !previewAudio.paused;
@@ -256,53 +352,21 @@ document.querySelectorAll('.beat-play').forEach((btn) => {
       stopPreview();
       return;
     }
-
     // dataset is read fresh here (not captured at page load), so this
     // always reflects whichever beat was most recently shown — matters
     // for #bi-play specifically, since beats-galaxy.js updates its
     // audioUrl every time a different beat's panel opens.
-    const url = btn.dataset.audioUrl || '';
-    if (!url) {
-      alert('No audio file is attached yet.');
-      return;
-    }
-
-    if (activePlayBtn && activePlayBtn !== btn) {
-      activePlayBtn.classList.remove('playing');
-      activePlayBtn.textContent = '▶';
-    }
-
-    activePlayBtn = btn;
-    btn.classList.add('playing');
-    btn.textContent = '❚❚';
-
-    if (floatingPlayer && fpName) {
-      fpName.textContent = btn.dataset.name || 'Now Playing';
-      floatingPlayer.classList.add('visible');
-    }
-    if (fpCover) {
-      const coverUrl = btn.dataset.coverUrl || '';
-      if (coverUrl) {
-        fpCover.style.backgroundImage = `url("${coverUrl}")`;
-        fpCover.style.backgroundSize = 'cover';
-        fpCover.style.backgroundPosition = 'center';
-        fpCover.textContent = '';
-      } else {
-        const color = btn.dataset.genreColor || 'var(--blue)';
-        fpCover.style.backgroundImage = 'none';
-        fpCover.style.background = `linear-gradient(160deg, ${color}, #0a0a0d)`;
-        fpCover.textContent = '♫';
-      }
-    }
-    if (fpPlayPause) fpPlayPause.textContent = '❚❚';
-
-    previewAudio.src = url;
-    previewAudio.currentTime = 0;
-    previewAudio.play().catch(() => {
-      // Playback blocked or failed to load — don't leave the UI stuck
-      // showing "playing" when nothing is actually audible.
-      stopPreview();
-    });
+    const track = {
+      name: btn.dataset.name || 'Now Playing',
+      audioUrl: btn.dataset.audioUrl || '',
+      coverUrl: btn.dataset.coverUrl || '',
+      genreColor: btn.dataset.genreColor || '',
+    };
+    // Find this track's position in the current queue so prev/next
+    // continues sensibly from here, rather than always restarting at 0.
+    const queue = getQueue();
+    const idx = queue.findIndex((t) => t.audioUrl === track.audioUrl && t.name === track.name);
+    playTrack(track, btn, idx);
   });
 });
 
@@ -499,8 +563,15 @@ setupTilt('.tier', -6, 5);
   function moveTubelightTo(item) {
     if (!item) return;
     const itemRect = item.getBoundingClientRect();
-    const wrapRect = navLinksWrap.getBoundingClientRect();
-    tubelight.style.left = `${itemRect.left - wrapRect.left}px`;
+    // .nav-tubelight is a direct child of .nav (sibling to .nav-links,
+    // not nested inside it) and is position:absolute — its containing
+    // block for `left` is .nav itself, not .nav-links. Measuring
+    // relative to .nav-links was the actual bug: .nav has its own
+    // padding (8px + a 1px border), so .nav-links's left edge sits
+    // ~9px to the right of .nav's — every calculated position was off
+    // by exactly that padding, a systematic error, not a timing issue.
+    const navRect = nav.getBoundingClientRect();
+    tubelight.style.left = `${itemRect.left - navRect.left}px`;
     tubelight.style.width = `${itemRect.width}px`;
     tubelight.classList.add('visible');
   }

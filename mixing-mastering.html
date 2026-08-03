@@ -67,20 +67,34 @@
 
     <div id="auth-otp-screen" class="auth-otp-screen" style="display:none;">
       <div class="auth-otp-icon">✉</div>
-      <h4>Enter verification code</h4>
-      <p class="meta" style="text-align:center;">We emailed a code to <span id="auth-otp-email"></span></p>
-      <div class="otp-row">
-        <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
-        <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
-        <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
-        <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
-        <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
-        <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
-      </div>
-      <p class="auth-error" id="auth-otp-error"></p>
-      <button type="button" class="btn solid" id="auth-otp-confirm" style="width:100%; justify-content:center;">Verify</button>
+      <h4>Check your email</h4>
+      <p class="meta" style="text-align:center;">We sent a confirmation link to <span id="auth-otp-email"></span> — click it, then come back and sign in.</p>
       <button type="button" class="auth-otp-resend" id="auth-otp-resend">Didn't get it? Resend</button>
     </div>
+  </div>
+</div>
+
+<div class="auth-modal" id="account-modal">
+  <div class="auth-modal-card">
+    <button class="beat-info-close" id="account-close" aria-label="Close">✕</button>
+    <div class="auth-tabs">
+      <button type="button" id="account-tab-favorites" class="auth-tab active">Favorites</button>
+      <button type="button" id="account-tab-playlists" class="auth-tab">Playlists</button>
+    </div>
+
+    <div id="account-favorites-panel">
+      <div id="favorites-list"><p class="meta">Loading...</p></div>
+    </div>
+
+    <div id="account-playlists-panel" style="display:none;">
+      <form id="create-playlist-form" style="display:flex; gap:8px; margin-bottom:16px;">
+        <input type="text" id="new-playlist-name" placeholder="New playlist name" style="flex:1;" required>
+        <button type="submit" class="btn solid">Create</button>
+      </form>
+      <div id="playlists-list"><p class="meta">Loading...</p></div>
+    </div>
+
+    <button class="btn solid" id="account-sign-out" data-sign-out style="width:100%; justify-content:center; margin-top:20px;">Sign Out</button>
   </div>
 </div>
 
@@ -259,22 +273,26 @@
 </section>
 
 <div class="floating-player" id="floating-player">
+  <button class="fp-close" id="fp-close" aria-label="Stop preview">✕</button>
   <div class="fp-cover" id="fp-cover">♫</div>
-  <div class="fp-info">
-    <div class="fp-top-row">
-      <div class="fp-name" id="fp-name">Track Name</div>
-      <button class="fp-playpause" id="fp-playpause" aria-label="Play/Pause">▶</button>
+  <div class="fp-name" id="fp-name">Track Name</div>
+  <div class="fp-seek-row">
+    <div class="fp-seek-bar" id="fp-seek-bar">
+      <div class="fp-seek-fill" id="fp-seek-fill"></div>
+      <div class="fp-seek-handle" id="fp-seek-handle"></div>
     </div>
-    <div class="fp-seek-row">
+    <div class="fp-time-row">
       <span class="fp-time" id="fp-time-current">0:00</span>
-      <div class="fp-seek-bar" id="fp-seek-bar">
-        <div class="fp-seek-fill" id="fp-seek-fill"></div>
-        <div class="fp-seek-handle" id="fp-seek-handle"></div>
-      </div>
       <span class="fp-time" id="fp-time-duration">0:00</span>
     </div>
   </div>
-  <button class="fp-close" id="fp-close" aria-label="Stop preview">✕</button>
+  <div class="fp-controls">
+    <button class="fp-ctrl" id="fp-shuffle" aria-label="Shuffle" title="Shuffle">🔀</button>
+    <button class="fp-ctrl" id="fp-prev" aria-label="Previous" title="Previous">⏮</button>
+    <button class="fp-ctrl fp-ctrl-play" id="fp-playpause" aria-label="Play/Pause">▶</button>
+    <button class="fp-ctrl" id="fp-next" aria-label="Next" title="Next">⏭</button>
+    <button class="fp-ctrl" id="fp-repeat" aria-label="Repeat" title="Repeat">🔁</button>
+  </div>
 </div>
 
 <footer>
@@ -289,6 +307,7 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="supabase-client.js"></script>
 <script src="auth.js" defer></script>
+<script src="library.js" defer></script>
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/lenis@1.3.25/dist/lenis.css">
 <script src="https://unpkg.com/lenis@1.3.25/dist/lenis.min.js"></script>

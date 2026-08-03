@@ -640,6 +640,54 @@ By typing your name below and checking the agreement box, you are electronically
     });
     updateSelectedPrice();
     if (panel) panel.classList.add('visible');
+    refreshLikeAndFavoriteUI(beat);
+  }
+
+  const biLikeBtn = document.getElementById('bi-like');
+  const biLikeCount = document.getElementById('bi-like-count');
+  const biFavoriteBtn = document.getElementById('bi-favorite');
+  const biAddPlaylistBtn = document.getElementById('bi-add-playlist');
+
+  async function refreshLikeAndFavoriteUI(beat) {
+    if (!window.qsLibrary || !beat.id) return;
+    const { count, likedByMe } = await window.qsLibrary.getLikeState(beat.id);
+    if (biLikeCount) biLikeCount.textContent = count;
+    if (biLikeBtn) biLikeBtn.classList.toggle('active', likedByMe);
+    if (biLikeBtn) biLikeBtn.dataset.liked = likedByMe ? 'true' : 'false';
+
+    const favorited = await window.qsLibrary.isFavorited(beat.id);
+    if (biFavoriteBtn) {
+      biFavoriteBtn.classList.toggle('active', favorited);
+      biFavoriteBtn.dataset.favorited = favorited ? 'true' : 'false';
+    }
+  }
+
+  if (biLikeBtn) {
+    biLikeBtn.addEventListener('click', async () => {
+      if (!currentPanelBeat || !currentPanelBeat.id || !window.qsLibrary) return;
+      const currentlyLiked = biLikeBtn.dataset.liked === 'true';
+      const result = await window.qsLibrary.toggleLike(currentPanelBeat.id, currentlyLiked);
+      if (result) {
+        biLikeCount.textContent = result.count;
+        biLikeBtn.classList.toggle('active', result.likedByMe);
+        biLikeBtn.dataset.liked = result.likedByMe ? 'true' : 'false';
+      }
+    });
+  }
+  if (biFavoriteBtn) {
+    biFavoriteBtn.addEventListener('click', async () => {
+      if (!currentPanelBeat || !currentPanelBeat.id || !window.qsLibrary) return;
+      const currentlyFavorited = biFavoriteBtn.dataset.favorited === 'true';
+      const nowFavorited = await window.qsLibrary.toggleFavorite(currentPanelBeat.id, currentlyFavorited);
+      biFavoriteBtn.classList.toggle('active', nowFavorited);
+      biFavoriteBtn.dataset.favorited = nowFavorited ? 'true' : 'false';
+    });
+  }
+  if (biAddPlaylistBtn) {
+    biAddPlaylistBtn.addEventListener('click', () => {
+      if (!currentPanelBeat || !currentPanelBeat.id || !window.qsLibrary) return;
+      window.qsLibrary.addBeatToPlaylist(currentPanelBeat.id);
+    });
   }
 
   licenseButtons.forEach((btn) => {
@@ -853,6 +901,18 @@ By typing your name below and checking the agreement box, you are electronically
       const group = genreGroups[row.genre];
       const existingCount = BEATS.filter((x) => x.genre === row.genre).length - 1;
       addPlanetForBeat(beat, group, existingCount);
+    });
+    // script.js (a separate closure) drives the floating player's
+    // prev/next/shuffle controls and needs a flat, navigable list —
+    // it can't reach into this IIFE's own BEATS array directly.
+    window.qsBeatsQueue = BEATS.map((b) => {
+      const g = GENRES.find((genre) => genre.id === b.genre);
+      return {
+        name: b.title,
+        audioUrl: b.audioUrl,
+        coverUrl: b.coverArtUrl,
+        genreColor: g ? hexToCss(g.color) : '',
+      };
     });
   }
   loadBeatsFromSupabase();

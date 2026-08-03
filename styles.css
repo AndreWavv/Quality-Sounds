@@ -344,7 +344,7 @@ a { color: inherit; text-decoration: none; }
   z-index: 1;
   max-width: 18ch;
   animation: float-title 6s ease-in-out infinite;
-  text-shadow: 0 0 40px rgba(0,0,0,0.6), 0 0 90px rgba(108,140,255,0.25);
+  text-shadow: 0 0 50px rgba(255,255,255,0.35), 0 0 100px rgba(134,166,255,0.5), 0 0 160px rgba(157,92,255,0.35);
 }
 
 @keyframes float-title {
@@ -367,11 +367,11 @@ a { color: inherit; text-decoration: none; }
 }
 
 .hero h1 .grad {
-  background: linear-gradient(90deg, #9DC0FF, #E3B8FF);
+  background: linear-gradient(90deg, #B8D4FF, #F0CCFF);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 30px rgba(157, 92, 255, 0.45));
+  filter: drop-shadow(0 0 40px rgba(157, 92, 255, 0.6));
 }
 
 .hero-sub { z-index: 1; margin-top: 26px; max-width: 46ch; color: var(--grey); font-size: 1.08rem; margin-left: auto; margin-right: auto; }
@@ -592,7 +592,7 @@ footer {
   z-index: 150;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   /* Transform-based (not the shared margin-based float-card) — this
      element has no other competing transform usage, so compositor-only
      animation is safe here and fixes the lag margin-animation causes
@@ -607,8 +607,8 @@ footer {
   50% { transform: translateY(calc(-50% - 10px)); }
 }
 .social-link {
-  width: 38px;
-  height: 38px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: 1px solid var(--hairline);
   display: flex;
@@ -617,11 +617,11 @@ footer {
   color: var(--grey);
   transition: color 0.25s ease, border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
-.social-link svg { width: 18px; height: 18px; }
+.social-link svg { width: 24px; height: 24px; }
 @media (max-width: 700px) {
-  .social-sidebar { right: 8px; gap: 8px; }
-  .social-sidebar .social-link { width: 30px; height: 30px; }
-  .social-sidebar .social-link svg { width: 14px; height: 14px; }
+  .social-sidebar { right: 8px; gap: 10px; }
+  .social-sidebar .social-link { width: 40px; height: 40px; }
+  .social-sidebar .social-link svg { width: 18px; height: 18px; }
 }
 .social-link:hover {
   color: var(--white);
@@ -912,6 +912,37 @@ footer {
   text-transform: uppercase;
 }
 
+.bi-actions-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.bi-icon-btn {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 10px 8px;
+  color: var(--grey);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.bi-icon-btn:hover { color: var(--white); border-color: var(--purple-bright); }
+.bi-icon-btn.active { background: rgba(157,92,255,0.15); border-color: var(--purple-bright); color: var(--purple-bright); }
+
+.library-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 0.85rem;
+  color: var(--white);
+}
+.library-playlist { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--hairline); }
+.library-playlist .library-row { border-bottom: none; padding-bottom: 6px; }
+
 .licensing-exclusive-note {
   text-align: center;
   color: var(--grey);
@@ -1078,115 +1109,141 @@ footer {
 @media (max-width: 900px) { .beat-grid { grid-template-columns: 1fr; } }
 
 /* ============ FLOATING PLAYER ============ */
+/* Vertical card layout ported from the reference component provided —
+   cover on top, controls below, matching its actual structure rather
+   than the previous horizontal bar. Shuffle/skip/repeat all do
+   something real here: skip moves through whichever beats are
+   currently loaded, shuffle picks a random one instead of the next
+   sequential one, repeat loops the current track on end. */
 .floating-player {
   position: fixed;
   bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(140%);
+  right: 24px;
+  transform: translateY(140%);
   z-index: 200;
-  background: linear-gradient(160deg, rgba(29,30,38,0.92), rgba(15,15,19,0.96));
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 22px;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  box-shadow: 0 25px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
-  backdrop-filter: blur(16px);
+  background: rgba(17,17,17,0.75);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(14px);
+  border-radius: 24px;
+  padding: 14px;
+  width: 280px;
+  box-shadow: 0 25px 70px rgba(0,0,0,0.55);
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  max-width: 460px;
-  width: 90vw;
 }
-.floating-player.visible { transform: translateX(-50%) translateY(0); }
-.floating-player::before {
-  content: '';
+.floating-player.visible { transform: translateY(0); }
+
+.fp-close {
   position: absolute;
-  top: -50%;
-  left: -10%;
-  right: -10%;
-  height: 80%;
-  background: radial-gradient(ellipse at center, rgba(75,110,255,0.2), rgba(157,92,255,0.12) 45%, transparent 75%);
-  filter: blur(24px);
-  z-index: -1;
-  pointer-events: none;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.45);
+  color: var(--white);
+  cursor: pointer;
+  font-size: 0.7rem;
 }
+.fp-close:hover { background: rgba(0,0,0,0.7); }
 
 .fp-cover {
-  width: 68px;
-  height: 68px;
-  border-radius: 12px;
-  flex-shrink: 0;
+  width: 100%;
+  height: 180px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
-  color: rgba(255,255,255,0.8);
-  background: linear-gradient(160deg, var(--blue), var(--purple));
+  font-size: 2.5rem;
+  color: rgba(255,255,255,0.6);
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 10px;
 }
 
-.fp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.fp-top-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.floating-player .fp-name {
+.fp-name {
+  color: var(--white);
   font-family: var(--body);
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 700;
+  font-size: 1rem;
+  text-align: center;
+  margin-bottom: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.fp-playpause {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: none;
-  flex-shrink: 0;
-  background: linear-gradient(135deg, var(--blue), var(--purple));
-  color: var(--white);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-}
 
-.fp-seek-row { display: flex; align-items: center; gap: 8px; }
-.fp-time { font-family: var(--mono); font-size: 0.65rem; color: var(--grey); flex-shrink: 0; width: 30px; }
-#fp-time-duration { text-align: right; }
+.fp-seek-row { margin-bottom: 10px; }
 .fp-seek-bar {
   position: relative;
-  flex: 1;
+  width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.2);
   cursor: pointer;
+  margin-bottom: 6px;
 }
 .fp-seek-fill {
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 0%;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--blue-bright), var(--purple-bright));
+  background: var(--white);
   pointer-events: none;
 }
 .fp-seek-handle {
   position: absolute;
   top: 50%;
   left: 0%;
-  width: 11px;
-  height: 11px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--white);
   transform: translate(-50%, -50%);
   box-shadow: 0 2px 6px rgba(0,0,0,0.4);
   pointer-events: none;
 }
+.fp-time-row { display: flex; justify-content: space-between; }
+.fp-time { font-family: var(--mono); font-size: 0.7rem; color: rgba(255,255,255,0.85); }
 
-.fp-close { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--hairline); background: transparent; color: var(--grey); cursor: pointer; flex-shrink: 0; }
-.fp-close:hover { color: var(--white); border-color: var(--purple-bright); }
+.fp-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 16px;
+  padding: 8px;
+}
+.fp-ctrl {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--white);
+  cursor: pointer;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+.fp-ctrl:hover { background: rgba(255,255,255,0.12); transform: scale(1.1); }
+.fp-ctrl.active { background: rgba(157,92,255,0.25); color: var(--purple-bright); }
+.fp-ctrl-play {
+  width: 38px;
+  height: 38px;
+  background: var(--white);
+  color: #111;
+  font-size: 1rem;
+}
+.fp-ctrl-play:hover { background: var(--white); transform: scale(1.1); }
 
 @media (max-width: 480px) {
-  .floating-player { max-width: none; padding: 12px; gap: 10px; }
-  .fp-cover { width: 44px; height: 44px; }
+  .floating-player { width: 88vw; right: 6vw; bottom: 16px; }
 }
 
 /* ============ LICENSE / PRICING TIERS ============ */

@@ -1,18 +1,13 @@
-// ===== Auth (sign up / login + OTP email confirmation) =====
-// Combines both reference designs: password-based signup/login (Premium
-// Auth), and an OTP code-entry screen (OTP Verify) for confirming a new
-// account's email — Supabase supports emailing a 6-digit code instead of
-// a magic link for this exact purpose.
-//
-// IMPORTANT — one manual dashboard step this depends on: Supabase's
-// default "Confirm signup" email template needs to actually include
-// {{ .Token }} (the 6-digit code) for this OTP screen to have a real
-// code to check against. That's an Auth → Email Templates setting in
-// the dashboard — not something changeable via the tools available here,
-// so it needs to be verified/set by hand before this flow works
-// end-to-end. If the default template only has a confirmation link and
-// no {{ .Token }}, the code the user receives won't exist, and this
-// screen will have nothing correct to verify against.
+// ===== Auth (sign up / login, link-based email confirmation) =====
+// Password-based signup/login (Premium Auth reference). Email
+// confirmation uses Supabase's actual default behavior — a link, not a
+// code — after real testing showed the code-based approach depended on
+// a dashboard email-template setting ({{ .Token }} on the "Confirm
+// signup" template) that wasn't actually configured, so no code was
+// ever sent. Auth logs confirmed: signup succeeded, a link-based
+// "confirmation" email went out, and clicking it worked correctly.
+// Going with what's proven to work rather than a fragile, unverifiable
+// dependency.
 (function () {
   const modal = document.getElementById('auth-modal');
   if (!modal || !window.qsClient) return;
@@ -25,10 +20,7 @@
   const formSignup = document.getElementById('auth-form-signup');
   const otpScreen = document.getElementById('auth-otp-screen');
   const authError = document.getElementById('auth-error');
-  const otpError = document.getElementById('auth-otp-error');
   const otpEmailLabel = document.getElementById('auth-otp-email');
-  const otpInputs = Array.from(document.querySelectorAll('.otp-digit'));
-  const otpConfirmBtn = document.getElementById('auth-otp-confirm');
   const otpResendBtn = document.getElementById('auth-otp-resend');
   const pwToggles = document.querySelectorAll('.auth-pw-toggle');
 
@@ -57,14 +49,12 @@
     if (otpScreen) otpScreen.style.display = 'none';
     hideError();
   }
-  function showOtpScreen(email) {
+  function showCheckEmailScreen(email) {
     pendingSignupEmail = email;
     if (otpEmailLabel) otpEmailLabel.textContent = email;
     if (formLogin) formLogin.style.display = 'none';
     if (formSignup) formSignup.style.display = 'none';
     if (otpScreen) otpScreen.style.display = 'block';
-    otpInputs.forEach((inp) => { inp.value = ''; });
-    if (otpInputs[0]) otpInputs[0].focus();
   }
   function showError(msg) {
     if (authError) { authError.textContent = msg; authError.style.display = 'block'; }
@@ -72,11 +62,14 @@
   function hideError() {
     if (authError) authError.style.display = 'none';
   }
-  function showOtpError(msg) {
-    if (otpError) { otpError.textContent = msg; otpError.style.display = 'block'; }
-  }
 
-  openBtns.forEach((btn) => btn.addEventListener('click', openModal));
+  openBtns.forEach((btn) => btn.addEventListener('click', () => {
+    if (isSignedIn) {
+      openAccountModal();
+    } else {
+      openModal();
+    }
+  }));
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (tabLogin) tabLogin.addEventListener('click', showLogin);
   if (tabSignup) tabSignup.addEventListener('click', showSignup);
@@ -125,43 +118,7 @@
       if (error) {
         showError(error.message);
       } else {
-        showOtpScreen(email);
-      }
-    });
-  }
-
-  // OTP digit boxes — auto-advance to the next box, backspace moves back.
-  otpInputs.forEach((input, i) => {
-    input.addEventListener('input', () => {
-      input.value = input.value.replace(/[^0-9]/g, '').slice(0, 1);
-      if (input.value && otpInputs[i + 1]) otpInputs[i + 1].focus();
-    });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Backspace' && !input.value && otpInputs[i - 1]) otpInputs[i - 1].focus();
-    });
-  });
-
-  if (otpConfirmBtn) {
-    otpConfirmBtn.addEventListener('click', async () => {
-      const code = otpInputs.map((inp) => inp.value).join('');
-      if (code.length !== otpInputs.length) {
-        showOtpError('Enter the full code.');
-        return;
-      }
-      otpConfirmBtn.disabled = true;
-      otpConfirmBtn.textContent = 'Verifying...';
-      const { error } = await window.qsClient.auth.verifyOtp({
-        email: pendingSignupEmail,
-        token: code,
-        type: 'signup',
-      });
-      otpConfirmBtn.disabled = false;
-      otpConfirmBtn.textContent = 'Verify';
-      if (error) {
-        showOtpError(error.message);
-      } else {
-        closeModal();
-        window.location.reload();
+        showCheckEmailScreen(email);
       }
     });
   }
@@ -181,14 +138,16 @@
   }
 
   // ===== Reflect signed-in state on any [data-open-auth] trigger =====
+  let isSignedIn = false;
   async function reflectAuthState() {
     const { data } = await window.qsClient.auth.getSession();
-    const signedIn = !!(data && data.session);
+    isSignedIn = !!(data && data.session);
     document.querySelectorAll('[data-auth-label]').forEach((el) => {
-      el.textContent = signedIn ? 'Account' : 'Sign In';
+      el.textContent = isSignedIn ? 'Account' : 'Sign In';
     });
   }
   reflectAuthState();
+  window.qsClient.auth.onAuthStateChange(() => reflectAuthState());
 
   const signOutBtns = document.querySelectorAll('[data-sign-out]');
   signOutBtns.forEach((btn) => {
@@ -197,4 +156,38 @@
       window.location.reload();
     });
   });
+
+  // ===== Account modal (favorites / playlists) =====
+  const accountModal = document.getElementById('account-modal');
+  const accountClose = document.getElementById('account-close');
+  const accountTabFav = document.getElementById('account-tab-favorites');
+  const accountTabPlaylists = document.getElementById('account-tab-playlists');
+  const accountFavPanel = document.getElementById('account-favorites-panel');
+  const accountPlaylistsPanel = document.getElementById('account-playlists-panel');
+
+  function openAccountModal() {
+    if (!accountModal) return;
+    accountModal.classList.add('visible');
+    showAccountFavorites();
+    if (window.qsLibrary) window.qsLibrary.refreshFavorites();
+    if (window.qsLibrary) window.qsLibrary.refreshPlaylists();
+  }
+  function closeAccountModal() {
+    if (accountModal) accountModal.classList.remove('visible');
+  }
+  function showAccountFavorites() {
+    if (accountTabFav) accountTabFav.classList.add('active');
+    if (accountTabPlaylists) accountTabPlaylists.classList.remove('active');
+    if (accountFavPanel) accountFavPanel.style.display = 'block';
+    if (accountPlaylistsPanel) accountPlaylistsPanel.style.display = 'none';
+  }
+  function showAccountPlaylists() {
+    if (accountTabPlaylists) accountTabPlaylists.classList.add('active');
+    if (accountTabFav) accountTabFav.classList.remove('active');
+    if (accountPlaylistsPanel) accountPlaylistsPanel.style.display = 'block';
+    if (accountFavPanel) accountFavPanel.style.display = 'none';
+  }
+  if (accountClose) accountClose.addEventListener('click', closeAccountModal);
+  if (accountTabFav) accountTabFav.addEventListener('click', showAccountFavorites);
+  if (accountTabPlaylists) accountTabPlaylists.addEventListener('click', showAccountPlaylists);
 })();
