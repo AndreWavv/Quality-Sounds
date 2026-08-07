@@ -599,3 +599,13 @@ setupTilt('.tier', -6, 5);
   }
   window.addEventListener('resize', initPosition);
 })();
+
+// ===== Reference track waveforms (Mixing/Mastering page) =====
+// The beats-page waveform is drawn per-beat when its panel opens
+// (beats-galaxy.js); these are static cards that exist on page load,
+// so each one just draws once here instead.
+if (window.qsDrawWaveform) {
+  document.querySelectorAll('[data-waveform-for]').forEach((canvas) => {
+    window.qsDrawWaveform(canvas, canvas.dataset.waveformFor);
+  });
+}

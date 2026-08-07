@@ -631,6 +631,10 @@ By typing your name below and checking the agreement box, you are electronically
       biPlay.dataset.genreColor = genre ? hexToCss(genre.color) : '';
       biPlay.dataset.coverUrl = beat.coverArtUrl || '';
     }
+    const biWaveform = document.getElementById('bi-waveform');
+    if (biWaveform && window.qsDrawWaveform) {
+      window.qsDrawWaveform(biWaveform, beat.audioUrl);
+    }
 
     licenseButtons.forEach((btn) => {
       const tier = btn.dataset.tier;
@@ -656,10 +660,7 @@ By typing your name below and checking the agreement box, you are electronically
     if (biLikeBtn) biLikeBtn.dataset.liked = likedByMe ? 'true' : 'false';
 
     const favorited = await window.qsLibrary.isFavorited(beat.id);
-    if (biFavoriteBtn) {
-      biFavoriteBtn.classList.toggle('active', favorited);
-      biFavoriteBtn.dataset.favorited = favorited ? 'true' : 'false';
-    }
+    if (biFavoriteBtn) biFavoriteBtn.checked = favorited;
   }
 
   if (biLikeBtn) {
@@ -675,12 +676,12 @@ By typing your name below and checking the agreement box, you are electronically
     });
   }
   if (biFavoriteBtn) {
-    biFavoriteBtn.addEventListener('click', async () => {
+    biFavoriteBtn.addEventListener('change', async () => {
       if (!currentPanelBeat || !currentPanelBeat.id || !window.qsLibrary) return;
-      const currentlyFavorited = biFavoriteBtn.dataset.favorited === 'true';
+      const wantsFavorited = biFavoriteBtn.checked; // the box already flipped visually on click
+      const currentlyFavorited = !wantsFavorited;
       const nowFavorited = await window.qsLibrary.toggleFavorite(currentPanelBeat.id, currentlyFavorited);
-      biFavoriteBtn.classList.toggle('active', nowFavorited);
-      biFavoriteBtn.dataset.favorited = nowFavorited ? 'true' : 'false';
+      biFavoriteBtn.checked = nowFavorited; // reconcile with what the server actually confirmed
     });
   }
   if (biAddPlaylistBtn) {
@@ -814,76 +815,6 @@ By typing your name below and checking the agreement box, you are electronically
       alert(`Thanks, ${fullName} — your agreement was recorded. Checkout isn't connected to real payment processing yet, so this is where Stripe would take over once that's wired up.`);
     });
   }
-
-  // ===== Layer in admin-uploaded beats (async — audio lives in IndexedDB) =====
-  // Beats saved through admin.html BEFORE this version won't have
-  // playable audio (that admin page only remembered the filename, not
-  // the audio data, until this update) — those will still appear here
-  // as planets, just without a working Preview button, until re-uploaded.
-  function openAdminDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open('qs-admin-db', 1);
-      req.onupgradeneeded = () => {
-        if (!req.result.objectStoreNames.contains('audioFiles')) {
-          req.result.createObjectStore('audioFiles');
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  function getAudioBlob(db, key) {
-    return new Promise((resolve) => {
-      try {
-        const tx = db.transaction('audioFiles', 'readonly');
-        const getReq = tx.objectStore('audioFiles').get(key);
-        getReq.onsuccess = () => resolve(getReq.result || null);
-        getReq.onerror = () => resolve(null);
-      } catch (e) {
-        resolve(null);
-      }
-    });
-  }
-
-  async function loadAdminBeats() {
-    let saved = [];
-    try {
-      saved = JSON.parse(localStorage.getItem('qs-admin-beats')) || [];
-    } catch (e) {
-      saved = [];
-    }
-    if (!saved.length) return;
-
-    let db = null;
-    try {
-      db = await openAdminDB();
-    } catch (e) {
-      db = null;
-    }
-
-    for (const b of saved) {
-      if (!b.title || !GENRES.some((g) => g.id === b.genre)) continue;
-      let audioUrl = '';
-      if (db && b.audioKey) {
-        const blob = await getAudioBlob(db, b.audioKey);
-        if (blob) audioUrl = URL.createObjectURL(blob);
-      }
-      const priceNum = Number(b.price) || 30;
-      const beat = {
-        genre: b.genre,
-        title: b.title,
-        meta: `${b.bpm || '—'} BPM · ${b.key || '—'}`,
-        licenses: { mp3: priceNum, wav: Math.round(priceNum * 2.2), stems: Math.round(priceNum * 3) },
-        audioUrl,
-      };
-      BEATS.push(beat);
-      const group = genreGroups[b.genre];
-      const existingCount = BEATS.filter((x) => x.genre === b.genre).length - 1;
-      addPlanetForBeat(beat, group, existingCount);
-    }
-  }
-  loadAdminBeats();
 
   // ===== Real beats data from Supabase =====
   async function loadBeatsFromSupabase() {

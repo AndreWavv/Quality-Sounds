@@ -106,6 +106,13 @@ a { color: inherit; text-decoration: none; }
 /* ============ NAV (vertical dropdown, replacing the horizontal
    fold-to-fit-active-item approach after repeated centering bugs) ============ */
 /* ============ NAV — whole-dock cube flip, tubelight restored ============ */
+/* ============ NAV — collapsed icon spreads outward into the full
+   row on hover (not a rotation), tubelight restored. Deliberately flat
+   structure: .nav-links and .nav-tubelight are BOTH direct children of
+   .nav, so position:absolute on the tubelight resolves against .nav
+   itself — exactly what the positioning JS measures against. Nesting
+   the tubelight inside another absolutely-positioned wrapper is what
+   caused a ~486px misalignment last time. ============ */
 .nav {
   position: fixed;
   top: 20px;
@@ -119,26 +126,8 @@ a { color: inherit; text-decoration: none; }
   transform: translateX(-50%) translateY(-160%);
 }
 
-.nav-cube-wrap {
-  perspective: 1200px;
-}
-/* The cube rotates on its X axis to reveal the expanded face — the
-   collapsed face (a small circle) sets the wrapper's actual layout
-   size, since the expanded face is absolutely positioned on top of it
-   and doesn't affect layout. Hovering .nav (not just the collapsed
-   face) keeps the flip open once the mouse moves onto the now-visible
-   expanded content, which sits in a different visual position due to
-   the 3D rotation. */
-.nav-cube {
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
-}
-.nav:hover .nav-cube {
-  transform: rotateX(180deg);
-}
-
-.nav-face-collapsed {
+/* Normal-flow content — this is what actually sizes .nav when collapsed. */
+.nav-trigger {
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -150,54 +139,72 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   justify-content: center;
   color: var(--white);
-  backface-visibility: hidden;
+  transition: opacity 0.25s ease;
 }
-.nav-face-collapsed svg { width: 20px; height: 20px; }
-.nav-face-collapsed .nav-glyph { font-size: 1.3rem; line-height: 1; }
+.nav:hover .nav-trigger {
+  opacity: 0;
+}
+.nav-trigger svg { width: 20px; height: 20px; }
+.nav-trigger .nav-glyph { font-size: 1.3rem; line-height: 1; }
 
-.nav-face-expanded {
+/* Absolutely positioned overlay, centered under the trigger — items
+   inside animate in from the center outward on hover rather than the
+   whole thing rotating. */
+.nav-links {
   position: absolute;
   top: 0;
   left: 50%;
-  transform: translateX(-50%) rotateX(180deg);
-  backface-visibility: hidden;
-  display: flex;
-  align-items: center;
-  background: rgba(20, 20, 26, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--hairline);
-  border-radius: 100px;
-  padding: 8px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
-  white-space: nowrap;
-}
-
-.nav-links {
+  transform: translateX(-50%);
   display: flex;
   gap: 2px;
   font-family: var(--mono);
   font-size: 0.72rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  position: relative;
+  background: rgba(20, 20, 26, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--hairline);
+  border-radius: 100px;
+  padding: 8px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  white-space: nowrap;
+}
+.nav:hover .nav-links {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .nav-item {
   color: var(--grey);
-  transition: background 0.2s ease, color 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
   position: relative;
   padding: 10px 16px;
   border-radius: 100px;
   display: block;
+  transform: translateX(var(--spread, 0));
+}
+.nav:hover .nav-item {
+  transform: translateX(0);
 }
 .nav-item:hover, .nav-item.active {
   color: var(--white);
   background: rgba(255,255,255,0.08);
 }
 .nav-item:hover {
-  transform: scale(1.08) translateY(-3px);
   box-shadow: 0 12px 24px rgba(0,0,0,0.4), 0 2px 0 rgba(255,255,255,0.08) inset;
 }
+/* Approximate outward offsets — items converge visually toward the
+   center trigger point when collapsed. These don't need to be pixel-
+   exact (the end state is just normal flex flow), only look like
+   they're spreading from the middle. */
+.nav-item:nth-child(1) { --spread: 130px; }
+.nav-item:nth-child(2) { --spread: 65px; }
+.nav-item:nth-child(3) { --spread: 0px; }
+.nav-item:nth-child(4) { --spread: -75px; }
+.nav-item:nth-child(5) { --spread: -110px; }
 
 /* Icon shown by default; hovering an individual item flips it (cube
    style, left-to-right) to reveal the text label. */
@@ -224,9 +231,11 @@ a { color: inherit; text-decoration: none; }
 .nav-item:hover .nav-face-icon { transform: rotateY(-180deg); }
 .nav-item:hover .nav-face-text { transform: rotateY(0deg); }
 
+/* Direct child of .nav — see comment at top of this section for why
+   that placement specifically matters. */
 .nav-tubelight {
   position: absolute;
-  top: -14px;
+  top: 66px;
   height: 3px;
   width: 40px;
   left: 0;
@@ -955,6 +964,34 @@ footer {
 .btn-preview-icon { display: inline-flex; width: 14px; height: 14px; flex-shrink: 0; }
 .btn-preview-icon svg { width: 100%; height: 100%; }
 
+.preview-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.preview-play-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--hairline);
+  color: var(--white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+.preview-play-btn:hover { background: rgba(255,255,255,0.14); border-color: var(--purple-bright); }
+.preview-play-btn.playing { border-color: var(--purple-bright); color: var(--purple-bright); }
+.preview-play-btn .btn-preview-icon { width: 13px; height: 13px; }
+.preview-waveform {
+  flex: 1;
+  height: 32px;
+  min-width: 0;
+}
+
 .bi-warning {
   font-family: var(--mono);
   font-size: 0.68rem;
@@ -985,6 +1022,46 @@ footer {
 }
 .bi-icon-btn:hover { color: var(--white); border-color: var(--purple-bright); }
 .bi-icon-btn.active { background: rgba(157,92,255,0.15); border-color: var(--purple-bright); color: var(--purple-bright); }
+
+.fav-toggle { display: block; cursor: pointer; }
+.fav-checkbox { display: none; }
+.fav-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  overflow: hidden;
+  border-radius: 100px;
+  border: 1px solid var(--purple-bright);
+  padding: 10px 18px;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--purple-bright);
+  transition: background 0.3s ease, color 0.3s ease;
+  position: relative;
+}
+.fav-pill:active { transform: scale(0.92); }
+.fav-label {
+  z-index: 1;
+  transition: transform 0.3s ease;
+}
+.fav-pill:hover .fav-label { transform: translateX(14px); }
+.fav-star {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.fav-star svg { width: 100%; height: 100%; }
+.fav-pill:hover .fav-star { transform: scale(6) translateX(-22px); }
+.fav-checkbox:checked ~ .fav-pill {
+  background: rgba(157,92,255,0.2);
+}
+.fav-checkbox:checked ~ .fav-pill:hover { color: var(--white); }
 
 .library-row {
   display: flex;
