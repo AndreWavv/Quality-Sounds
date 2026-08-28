@@ -609,3 +609,33 @@ if (window.qsDrawWaveform) {
     window.qsDrawWaveform(canvas, canvas.dataset.waveformFor);
   });
 }
+
+// ===== Checkout return handling =====
+// Stripe redirects back here after checkout. Never trust that redirect
+// alone as proof of payment — the webhook is the real source of truth,
+// and it may take a moment to arrive. This checks the actual order
+// status in the database rather than assuming success just because the
+// URL says so.
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const checkoutStatus = params.get('checkout');
+  if (!checkoutStatus) return;
+
+  if (checkoutStatus === 'cancelled') {
+    alert('Checkout was cancelled — no charge was made.');
+  } else if (checkoutStatus === 'success') {
+    const orderId = params.get('order_id');
+    if (orderId && window.qsClient) {
+      setTimeout(async () => {
+        const { data: order } = await window.qsClient.from('orders').select('status').eq('id', orderId).single();
+        if (order && order.status === 'completed') {
+          alert('Payment confirmed! Your license is active.');
+        } else {
+          alert('Payment received — confirming your order now. If this takes more than a minute, contact support.');
+        }
+      }, 2000);
+    }
+  }
+  // Clean the URL so refreshing the page doesn't re-trigger this alert.
+  window.history.replaceState({}, document.title, window.location.pathname);
+})();

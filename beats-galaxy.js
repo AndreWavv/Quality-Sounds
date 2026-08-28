@@ -783,6 +783,20 @@ By typing your name below and checking the agreement box, you are electronically
       const fullName = agreementNameInput.value.trim();
       const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
+      if (!window.qsClient) {
+        alert('Something went wrong loading the checkout system — please refresh and try again.');
+        return;
+      }
+      const { data: sessionData } = await window.qsClient.auth.getSession();
+      if (!sessionData || !sessionData.session) {
+        alert('Please sign in first — checkout requires an account so you can access your license and receive renewal reminders.');
+        closeAgreementModal();
+        const trigger = document.querySelector('[data-open-auth]');
+        if (trigger) trigger.click();
+        return;
+      }
+      const buyerId = sessionData.session.user.id;
+
       // IP is part of the signature record we agreed on. Client-side JS
       // has no direct way to read the visitor's public IP — this calls a
       // public lookup service for it, same technique most sites use for
@@ -797,22 +811,45 @@ By typing your name below and checking the agreement box, you are electronically
         // proceed without it
       }
 
-      const agreementRecord = {
-        beat_id: agreementBeat.title, // placeholder key until real beat IDs come from Supabase
-        license_type: agreementTier,
-        price_paid: agreementBeat.licenses[agreementTier],
-        agreed_full_name: fullName,
-        agreed_at: new Date().toISOString(),
-        agreed_ip: ip,
-        license_agreement_snapshot: buildContractText(agreementBeat, agreementTier, fullName, today),
-      };
+      agreementConfirmBtn.disabled = true;
+      agreementConfirmBtn.textContent = 'Redirecting to checkout...';
+
+      const { data: order, error: orderError } = await window.qsClient
+        .from('orders')
+        .insert({
+          buyer_id: buyerId,
+          beat_id: agreementBeat.id, // real Supabase beat id — was incorrectly using the title as a placeholder before real beat IDs existed
+          license_type: agreementTier,
+          price_paid: agreementBeat.licenses[agreementTier],
+          status: 'pending',
+          agreed_full_name: fullName,
+          agreed_at: new Date().toISOString(),
+          agreed_ip: ip,
+          license_agreement_snapshot: buildContractText(agreementBeat, agreementTier, fullName, today),
+        })
+        .select()
+        .single();
+
+      if (orderError || !order) {
+        agreementConfirmBtn.disabled = false;
+        agreementConfirmBtn.textContent = 'Confirm & Continue';
+        alert(`Something went wrong creating your order: ${orderError ? orderError.message : 'unknown error'}. Please try again.`);
+        return;
+      }
+
+      const { data: checkoutData, error: checkoutError } = await window.qsClient.functions.invoke('create-checkout-session', {
+        body: { order_id: order.id },
+      });
+
+      if (checkoutError || !checkoutData || !checkoutData.url) {
+        agreementConfirmBtn.disabled = false;
+        agreementConfirmBtn.textContent = 'Confirm & Continue';
+        alert(`Something went wrong starting checkout: ${checkoutError ? checkoutError.message : 'no checkout URL returned'}. Please try again.`);
+        return;
+      }
 
       closeAgreementModal();
-      // Staged and ready for the Stripe step — not yet sent anywhere,
-      // since checkout isn't wired up yet. Logged so it's inspectable
-      // during testing rather than silently discarded.
-      console.log('Agreement captured, ready for checkout once Stripe is wired up:', agreementRecord);
-      alert(`Thanks, ${fullName} — your agreement was recorded. Checkout isn't connected to real payment processing yet, so this is where Stripe would take over once that's wired up.`);
+      window.location.href = checkoutData.url;
     });
   }
 
