@@ -822,9 +822,236 @@ footer {
 }
 .galaxy-empty-hint.visible { opacity: 1; }
 
-.galaxy-viewport { position: absolute; inset: 0; }
-.galaxy-viewport canvas { display: block; width: 100%; height: 100%; cursor: grab; }
-.galaxy-viewport canvas:active { cursor: grabbing; }
+/* ============ CLOUD SCENE — replaces the galaxy/planets theme ============ */
+.galaxy-wrap[data-theme="day"] {
+  --cloud-sky-1: #06070A;
+  --cloud-sky-2: #1A1512;
+  --cloud-sky-3: #3A2A1E;
+  --cloud-accent: #D9A45B;
+  --cloud-secondary: #B8632E;
+  --cloud-light: #FFE9B0;
+  --cloud-light-glow: rgba(255, 233, 176, 0.16);
+  --cloud-buy-bg: #E1E0CC;
+  --cloud-buy-text: #0A0A0D;
+}
+.galaxy-wrap[data-theme="night"] {
+  --cloud-sky-1: #02013A;
+  --cloud-sky-2: #040273;
+  --cloud-sky-3: #0A08A8;
+  --cloud-accent: #8FB3D9;
+  --cloud-secondary: #4A48C9;
+  --cloud-light: #C9CDFF;
+  --cloud-light-glow: rgba(201, 205, 255, 0.14);
+  --cloud-buy-bg: #EEF0FF;
+  --cloud-buy-text: #0A0850;
+}
+
+/* Videos are wide, distant landscape shots — cropped/scaled tighter so
+   it reads as "inside the atmosphere" rather than "photo behind cards".
+   object-position targets the cloud-sea/sun region on the day clip and
+   the starfield/Milky Way region on the night clip, avoiding the sharp
+   mountain silhouettes in both, which read as distant landscape rather
+   than immersive atmosphere. */
+.cloud-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 65% 35%;
+  transform: scale(1.3);
+  z-index: 0;
+  opacity: 1;
+  transition: opacity 1.4s ease;
+}
+.cloud-video-night {
+  object-position: 40% 15%;
+  transform: scale(1.25);
+  opacity: 0;
+}
+.galaxy-wrap[data-theme="night"] .cloud-video:not(.cloud-video-night) { opacity: 0; }
+.galaxy-wrap[data-theme="night"] .cloud-video-night { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud-video { display: none; }
+  .galaxy-wrap { background: linear-gradient(160deg, var(--cloud-sky-1), var(--cloud-sky-2), var(--cloud-sky-3)); }
+}
+
+.cloud-stars {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+.galaxy-wrap[data-theme="night"] .cloud-stars { opacity: 1; }
+.cloud-star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.cloud-sunbeams {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: conic-gradient(from 200deg at 50% -15%,
+    transparent 0deg, var(--cloud-light-glow) 8deg, transparent 18deg,
+    transparent 30deg, var(--cloud-light-glow) 38deg, transparent 48deg,
+    transparent 65deg, var(--cloud-light-glow) 73deg, transparent 83deg
+  );
+  mix-blend-mode: screen;
+  animation: sunbeam-drift 22s ease-in-out infinite;
+}
+@keyframes sunbeam-drift {
+  0%, 100% { opacity: 0.7; transform: rotate(0deg); }
+  50% { opacity: 1; transform: rotate(2deg); }
+}
+
+.cloud-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+.cloud-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 35%, transparent 60%, rgba(0,0,0,0.6) 100%);
+}
+
+/* CSS3DRenderer output mounts here — sits above all the atmospheric
+   layers, below the licensing panel/hints (which use their own
+   z-index further down in this file). */
+#galaxy-viewport { position: absolute; inset: 0; z-index: 5; }
+
+/* ---- Cards (CSS3DRenderer — real DOM elements, not raycast targets:
+   the actual fix for "the buy button was unreliable to click") ---- */
+.cloud-card {
+  width: 210px;
+  background: rgba(10, 10, 14, 0.74);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--cloud-accent);
+  border-radius: 12px;
+  box-shadow: 0 0 30px var(--cloud-light-glow), 0 20px 40px rgba(0,0,0,0.5);
+  padding: 10px;
+  font-family: var(--body);
+  cursor: pointer;
+  animation: cloud-card-drift 7s ease-in-out infinite;
+}
+@keyframes cloud-card-drift {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cloud-card { animation: none; }
+}
+.cloud-card-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--cloud-secondary), #0a0a0d);
+  margin-bottom: 10px;
+}
+.cloud-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cloud-card-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.75) 100%);
+}
+.cloud-card-title {
+  font-family: var(--display);
+  text-transform: uppercase;
+  font-size: 1rem;
+  line-height: 1.1;
+  background: linear-gradient(90deg, var(--cloud-buy-bg), var(--cloud-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 4px;
+}
+.cloud-card-meta {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--grey);
+  margin-bottom: 8px;
+}
+.cloud-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cloud-card-price { font-family: var(--mono); font-weight: 700; color: var(--cloud-buy-bg); font-size: 0.85rem; }
+.cloud-card-price s { color: var(--grey); font-weight: 400; margin-right: 6px; }
+.cloud-card-playbtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--cloud-accent);
+  background: rgba(255,255,255,0.06);
+  color: var(--cloud-buy-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.cloud-card-playbtn svg { width: 11px; height: 11px; }
+.cloud-card-buy {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--cloud-buy-bg);
+  color: var(--cloud-buy-text);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* ---- Theme toggle (added to the existing dock, per spec) ---- */
+.theme-toggle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: rgba(255,255,255,0.06);
+  color: var(--white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: -4px;
+  right: -38px;
+}
+.theme-toggle svg { width: 15px; height: 15px; }
+.theme-toggle .theme-icon-moon { display: none; }
+[data-site-theme="night"] .theme-toggle .theme-icon-sun { display: none; }
+[data-site-theme="night"] .theme-toggle .theme-icon-moon { display: block; }
+
+
+.galaxy-viewport { cursor: grab; }
+.galaxy-viewport:active { cursor: grabbing; }
 
 .beat-info-panel {
   position: absolute;

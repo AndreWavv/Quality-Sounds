@@ -1,43 +1,70 @@
-// ===== Beats Galaxy =====
-// Overview mode is unchanged: all genre suns visible, free drag/orbit,
-// scroll to zoom, click a sun or its pill to focus a genre.
+// ===== Beats Cloud Scene =====
+// Replaces the galaxy/planets/starfield theme with a cinematic cloud
+// scene, per the reskin — the underlying reason was usability, not
+// aesthetics: clicking a small orbiting 3D planet to reach the buy
+// button was unreliable. Beats are now CSS3DObjects (real DOM
+// elements, positioned in 3D space) instead of raycasted WebGL meshes,
+// so the buy button is a genuine clickable <button> at all times.
 //
-// Focusing a genre no longer locks the camera into a fixed "tunnel" —
-// that was the wrong shape for what was actually asked for. Instead:
-// every OTHER genre hides, and this genre's beats appear as real 3D
-// planets (textured, lit spheres — not flat DOM cards) arranged around
-// the sun at diagonal offsets (upper/lower/middle, left/right). The
-// camera and controls behave EXACTLY like overview mode the whole time
-// — same free drag-to-orbit, same damped scroll-to-zoom, no separate
-// system — because that consistency was the actual point being made:
-// browsing one genre should feel like browsing all of them, just
-// focused and decluttered.
+// The free camera drag/zoom/orbit feel carries over completely
+// unchanged from the galaxy — same custom damped-zoom and damped-
+// rotation physics, same tuning. Only the visual theme and the beat
+// representation changed.
 //
-// Planets use a real lit material (MeshStandardMaterial) with a shared
-// moon texture (from the same public three.js example assets used in
-// an uploaded reference component) tinted per genre, which needs actual
-// scene lighting to render — added below. Clicking a planet raycasts
-// exactly like clicking a sun already did.
-//
-// Note on scale: with 12 beats total (2 per genre) it's fine for every
-// planet to exist as a real mesh all the time, just hidden via group
-// visibility. At hundreds of beats per genre, the 6 diagonal slots
-// below would need to become a proper pool (cycle which beat occupies
-// which slot, similar in spirit to how the previous attempt pooled DOM
-// cards) rather than literally one mesh per beat — flagged here for
-// whenever that's the next problem to solve, not solved yet.
-//
-// Reuses the exact star-shader pattern proven working in nebula-bg.js:
-// vertexColors:true (Three.js auto-injects the `color` attribute — do NOT
-// declare it again, that caused a real compile failure earlier in this
-// project) and correctly-ordered smoothstep (backwards edges are
-// undefined behavior in GLSL and silently broke rendering earlier too).
+// Day/night theming: two looping cloud videos crossfade based on
+// data-theme on .galaxy-wrap, driven by local hour on load and
+// overridable via the dock's sun/moon toggle (persisted to
+// localStorage). See initTheme() below.
 (function () {
-  if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') return;
+  if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined' || typeof THREE.CSS3DRenderer === 'undefined') return;
 
   const container = document.getElementById('galaxy-viewport');
   const flashEl = document.getElementById('galaxy-flash');
   if (!container) return;
+
+  // ===== Day/night theme =====
+  const sceneWrap = document.getElementById('cloud-scene-wrap');
+  const THEME_STORAGE_KEY = 'qs-theme';
+
+  function setTheme(theme) {
+    if (sceneWrap) sceneWrap.dataset.theme = theme;
+    document.documentElement.dataset.siteTheme = theme;
+  }
+
+  function initTheme() {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'day' || stored === 'night') {
+      setTheme(stored);
+      return;
+    }
+    const hour = new Date().getHours();
+    setTheme(hour >= 6 && hour < 19 ? 'day' : 'night');
+  }
+  initTheme();
+
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const next = sceneWrap && sceneWrap.dataset.theme === 'day' ? 'night' : 'day';
+      setTheme(next);
+      localStorage.setItem(THEME_STORAGE_KEY, next);
+    });
+  }
+
+  // A scattering of small stars above the cloud line, per spec —
+  // night theme only (controlled by CSS opacity on the container based
+  // on data-theme, this just needs to exist once).
+  const starsContainer = document.getElementById('cloud-stars');
+  if (starsContainer) {
+    for (let i = 0; i < 60; i++) {
+      const star = document.createElement('div');
+      star.className = 'cloud-star';
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.top = `${Math.random() * 45}%`; // upper portion only — "above the cloud line"
+      star.style.opacity = String(0.3 + Math.random() * 0.6);
+      starsContainer.appendChild(star);
+    }
+  }
 
   const GENRES = [
     { id: 'trap', name: 'Trap', color: 0xff6b6b, pos: [-70, 15, -20] },
@@ -64,26 +91,22 @@
   const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 500);
   camera.position.set(0, 60, 165);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // CSS3DRenderer — renders real DOM elements positioned in 3D space,
+  // not WebGL meshes. This is the actual fix for "the buy button was
+  // unreliable to click": a genuine <button> in the DOM always receives
+  // real clicks, no raycast hit-testing against a 3D hitbox involved.
+  // No scene lighting needed — CSS3DObjects aren't affected by
+  // Three.js lights at all, they're just transformed HTML.
+  const renderer = new THREE.CSS3DRenderer();
   renderer.setSize(width, height);
-  renderer.setClearColor(0x030307, 1);
   container.innerHTML = '';
   container.appendChild(renderer.domElement);
-
-  // Real lighting — needed for the planets' lit material to render with
-  // actual shading instead of flat black. Suns/stars use unlit materials
-  // and are unaffected by this either way.
-  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-  const sunLight = new THREE.DirectionalLight(0xffffff, 1.3);
-  sunLight.position.set(60, 90, 60);
-  scene.add(sunLight);
 
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
-  controls.minDistance = 20; // clears the sun's outer halo (radius 13.5) — was 8, letting the camera clip inside it
-  controls.maxDistance = 320; // more headroom to zoom out well past the overview framing distance (~176)
+  controls.minDistance = 20;
+  controls.maxDistance = 320;
   controls.target.set(0, 0, 0);
 
   // Custom damped zoom (OrbitControls' own wheel-zoom applies each tick
@@ -146,333 +169,8 @@
     zoomVelocity = Math.max(-MAX_ZOOM_VELOCITY, Math.min(MAX_ZOOM_VELOCITY, zoomVelocity));
   }, { passive: false });
 
-  // ---- Two-part star shader: tiny hard bright core + softer glow ----
-  const starMaterials = [];
-  function starMaterial() {
-    const mat = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 } },
-      vertexShader: `
-        attribute float aSize;
-        attribute float aTwinkle;
-        uniform float uTime;
-        varying vec3 vColor;
-        varying float vTwinkle;
-        void main() {
-          vColor = color;
-          vTwinkle = 0.7 + 0.3 * sin(uTime * 1.6 + aTwinkle);
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = aSize * (280.0 / -mvPosition.z);
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vColor;
-        varying float vTwinkle;
-        void main() {
-          float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
-          if (d > 1.0) discard;
-          float hardCore = 1.0 - smoothstep(0.0, 0.18, d);
-          float softGlow = 1.0 - smoothstep(0.18, 1.0, d);
-          float alpha = clamp(hardCore + softGlow * 0.55, 0.0, 1.0) * vTwinkle;
-          gl_FragColor = vec4(vColor * vTwinkle * (1.0 + hardCore * 1.6), alpha);
-        }
-      `,
-      vertexColors: true,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-    starMaterials.push(mat);
-    return mat;
-  }
-
-  function buildStarGeometry(count, positions, colors, sizes) {
-    const twinkles = new Float32Array(count);
-    for (let i = 0; i < count; i++) twinkles[i] = Math.random() * Math.PI * 2;
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    geo.setAttribute('aTwinkle', new THREE.BufferAttribute(twinkles, 1));
-    return geo;
-  }
-
-  const fieldStars = (function addFieldStars() {
-    const count = 8400; // tripled per request
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const c = new THREE.Color();
-    // Spherical shell, not a cube — a cube's flat faces are much closer
-    // than its corners (max reach along an axis is only half the space
-    // diagonal), so looking in an axis-aligned direction could see empty
-    // space well before maxDistance even though stars existed elsewhere.
-    // This shell's outer radius comfortably exceeds maxDistance (320) in
-    // every direction, so there's no gap no matter which way you're
-    // facing. Cube-root sampling of radius gives uniform density by
-    // volume rather than bunching everything toward the center.
-    const innerR = 50;
-    const outerR = 360;
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-      const u = Math.random();
-      const r = Math.cbrt(u * (outerR ** 3 - innerR ** 3) + innerR ** 3);
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      positions[i3] = r * Math.sin(phi) * Math.cos(theta);
-      positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      positions[i3 + 2] = r * Math.cos(phi);
-      c.setHSL(0.6, Math.random() * 0.2, 0.75 + Math.random() * 0.2);
-      colors[i3] = c.r; colors[i3 + 1] = c.g; colors[i3 + 2] = c.b;
-      sizes[i] = 0.5 + Math.random() * 0.6;
-    }
-    const points = new THREE.Points(buildStarGeometry(count, positions, colors, sizes), starMaterial());
-    scene.add(points);
-    return points;
-  })();
-
-  // Shared planet texture — loaded once, reused (with per-genre color
-  // tint via each material's own `color`) across every planet mesh.
-  // Same public three.js example asset an uploaded reference component
-  // used for its moon.
-  const textureLoader = new THREE.TextureLoader();
-  textureLoader.crossOrigin = 'anonymous';
-  const planetTexture = textureLoader.load(
-    'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg'
-  );
-
-  const genreGroups = {};
-  const sunMeshes = [];
-  const rotatingClusters = [];
-  const pulsingHalos = [];
-  const planetMeshes = []; // for raycasting clicks
-  const rotatingPlanets = []; // gentle self-rotation each frame
-  const orbitingPlanets = []; // orbits the sun + trail update each frame
-
-  // 6 named diagonal slots around a sun, per request — not a straight
-  // line in front of the camera. Cycles for however many beats a genre
-  // has (currently always <= 6; see the scaling note in the file header
-  // for when a genre eventually has more than 6).
-  const ORBIT_RADIUS = 17;
-  // Each slot now has a DISTINCT radius (not just mirrored left/right) —
-  // previously left/right pairs shared identical radius AND height,
-  // meaning they orbited on the exact same circle and periodically
-  // collided. Different radius per slot means even same-height pairs
-  // trace concentric, non-intersecting circles.
-  const SLOT_OFFSETS = [
-    { x: -ORBIT_RADIUS, y: ORBIT_RADIUS * 0.55, z: 3 },          // upper left
-    { x: ORBIT_RADIUS * 1.2, y: ORBIT_RADIUS * 0.55, z: -3.5 },  // upper right
-    { x: -ORBIT_RADIUS * 1.4, y: 0, z: 0 },                      // middle left
-    { x: ORBIT_RADIUS * 1.6, y: 0, z: 0 },                       // middle right
-    { x: -ORBIT_RADIUS * 1.1, y: -ORBIT_RADIUS * 0.55, z: -3 },  // lower left
-    { x: ORBIT_RADIUS * 1.3, y: -ORBIT_RADIUS * 0.55, z: 3.5 },  // lower right
-  ];
-
-  const TRAIL_LENGTH = 360; // 6s of history at 60fps
-
   function hexToCss(hex) {
     return '#' + hex.toString(16).padStart(6, '0');
-  }
-
-  function addPlanetForBeat(beat, group, slotIndex) {
-    const genre = GENRES.find((g) => g.id === beat.genre);
-    const offset = SLOT_OFFSETS[slotIndex % SLOT_OFFSETS.length];
-    const mat = new THREE.MeshStandardMaterial({
-      map: planetTexture,
-      color: genre.color,
-      roughness: 0.85,
-      metalness: 0.05,
-    });
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(2.0, 28, 28), mat);
-    mesh.userData.beat = beat;
-
-    // Orbit derived from the original diagonal slot position: radius and
-    // starting angle come from its x/z, the y offset is kept constant as
-    // it orbits (so the diagonal "height" placement per slot is
-    // preserved, just now circling the sun instead of sitting fixed).
-    const orbitRadius = Math.sqrt(offset.x * offset.x + offset.z * offset.z);
-    const orbitAngle0 = Math.atan2(offset.z, offset.x);
-    mesh.userData.orbit = {
-      radius: orbitRadius,
-      angle: orbitAngle0,
-      y: offset.y,
-      speed: 0.35 + Math.random() * 0.15, // slightly varied per planet so they don't all move in lockstep
-    };
-    mesh.position.set(offset.x, offset.y, offset.z);
-    group.add(mesh);
-    planetMeshes.push(mesh);
-    rotatingPlanets.push(mesh);
-
-    // Trail — a Line tracing the planet's recent positions, faded toward
-    // the tail by dimming color rather than true alpha (simpler, and
-    // still reads well since it fades toward the dark background either
-    // way). History starts pre-filled at the planet's current spot so
-    // the trail doesn't visibly "grow out" from nothing on first frame.
-    const trailPositions = new Float32Array(TRAIL_LENGTH * 3);
-    const trailColors = new Float32Array(TRAIL_LENGTH * 3);
-    const trailColor = new THREE.Color(genre.color);
-    for (let i = 0; i < TRAIL_LENGTH; i++) {
-      trailPositions[i * 3] = offset.x;
-      trailPositions[i * 3 + 1] = offset.y;
-      trailPositions[i * 3 + 2] = offset.z;
-      // Index 0 = oldest/tail (dim), TRAIL_LENGTH-1 = newest/head (full
-      // brightness, right at the planet). This relationship is fixed
-      // forever — only which world position sits at which index changes
-      // each frame (via copyWithin in the animate loop), so colors are
-      // set once here and never touched again.
-      const fade = i / (TRAIL_LENGTH - 1);
-      trailColors[i * 3] = trailColor.r * fade;
-      trailColors[i * 3 + 1] = trailColor.g * fade;
-      trailColors[i * 3 + 2] = trailColor.b * fade;
-    }
-    const trailGeo = new THREE.BufferGeometry();
-    trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
-    trailGeo.setAttribute('color', new THREE.BufferAttribute(trailColors, 3));
-    const trailMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8 });
-    const trail = new THREE.Line(trailGeo, trailMat);
-    group.add(trail);
-    mesh.userData.trail = trail;
-    orbitingPlanets.push(mesh);
-  }
-
-  GENRES.forEach((genre) => {
-    const group = new THREE.Group();
-    group.position.set(genre.pos[0], genre.pos[1], genre.pos[2]);
-    scene.add(group);
-    genreGroups[genre.id] = group;
-
-    // The sun — bigger than any planet (it's the genre's actual star,
-    // planets are just what orbit it), and given real surface texture
-    // via the same shared planet texture, used here as both a color
-    // map AND an emissive map so the surface detail still reads through
-    // the glow rather than washing out to a flat colored ball.
-    const sunMat = new THREE.MeshStandardMaterial({
-      map: planetTexture,
-      color: genre.color,
-      emissive: new THREE.Color(genre.color),
-      emissiveMap: planetTexture,
-      emissiveIntensity: 1.4,
-      roughness: 0.6,
-    });
-    const core = new THREE.Mesh(new THREE.SphereGeometry(4.6, 32, 32), sunMat);
-    core.userData.genreId = genre.id;
-    group.add(core);
-    sunMeshes.push(core);
-    rotatingPlanets.push(core); // suns get the same gentle self-rotation as planets
-
-    [7.0, 9.8, 13.5].forEach((r, i) => {
-      const baseOpacity = 0.16 - i * 0.045;
-      const haloMat = new THREE.MeshBasicMaterial({
-        color: genre.color,
-        transparent: true,
-        opacity: baseOpacity,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      });
-      const halo = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 20), haloMat);
-      group.add(halo);
-      pulsingHalos.push({ mesh: halo, baseOpacity, phase: Math.random() * Math.PI * 2 });
-    });
-
-    // Star cluster — much richer now: more particles, and a proper
-    // multi-tier color/brightness palette instead of a simple two-color
-    // mix. Inspired by the reference's particle ring: most particles
-    // are neutral/pale, a smaller portion carry the genre's tint, and a
-    // rare few get a brightness "sparkle" boost — brightness also scales
-    // with closeness to the sun, so it reads as genuinely dense near the
-    // center and thins out toward the edges rather than being uniform.
-    const count = 2500;
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const c = new THREE.Color(genre.color);
-    const pale = new THREE.Color(0xffffff);
-    const coolPale = new THREE.Color(0xcfe0ff);
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-      const theta = Math.random() * Math.PI * 2;
-      const radiusFactor = Math.pow(Math.random(), 0.55); // denser near center
-      const r = 6 + radiusFactor * 24;
-      const thickness = 3.5 * (1 - radiusFactor * 0.4);
-      positions[i3] = Math.cos(theta) * r;
-      positions[i3 + 1] = (Math.random() - 0.5) * thickness;
-      positions[i3 + 2] = Math.sin(theta) * r;
-
-      const closeness = 1 - radiusFactor;
-      const palette = Math.random();
-      // ~70% neutral/cool-pale, ~22% genre-tinted, ~8% a bright sparkle
-      // in the genre color — matches the reference's "mostly one base
-      // tone, occasional accent, rare bright outlier" structure.
-      const sparkle = palette > 0.92 ? 1.8 : 1.0;
-      const mixed = palette > 0.92 ? c : palette > 0.7 ? c : (Math.random() < 0.5 ? pale : coolPale);
-      const intensity = (0.55 + closeness * 0.7) * sparkle;
-      colors[i3] = mixed.r * intensity; colors[i3 + 1] = mixed.g * intensity; colors[i3 + 2] = mixed.b * intensity;
-      sizes[i] = 0.4 + closeness * 1.1 + Math.random() * 0.5 + (sparkle > 1 ? 0.5 : 0);
-    }
-    const points = new THREE.Points(buildStarGeometry(count, positions, colors, sizes), starMaterial());
-    // Every cluster was built flat on the same plane (Y) before, so they
-    // all visibly "faced" the same way. A one-time random tilt per
-    // genre — kept on top of the existing continuous rotation each
-    // frame — makes each one read as its own galaxy at its own angle,
-    // like real ones seen from different viewpoints.
-    points.rotation.x = Math.random() * Math.PI;
-    points.rotation.y = Math.random() * Math.PI * 2;
-    points.rotation.z = Math.random() * Math.PI;
-    group.add(points);
-    rotatingClusters.push(points);
-
-    // Asteroid belt — real 3D rock meshes (not flat points) in a tighter
-    // ring closer to the sun than the star cluster extends, alongside it
-    // rather than replacing it. One InstancedMesh per genre keeps this
-    // cheap (7 draw calls total for ~490 rocks, not 490 separate meshes).
-    const ASTEROID_COUNT = 70;
-    const asteroidGeo = new THREE.DodecahedronGeometry(0.55, 0);
-    const asteroidMat = new THREE.MeshStandardMaterial({
-      map: planetTexture,
-      color: genre.color,
-      roughness: 0.95,
-      metalness: 0.05,
-    });
-    const asteroidMesh = new THREE.InstancedMesh(asteroidGeo, asteroidMat, ASTEROID_COUNT);
-    const dummy = new THREE.Object3D();
-    for (let i = 0; i < ASTEROID_COUNT; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const r = 8 + Math.random() * 8;
-      const y = (Math.random() - 0.5) * 1.8;
-      dummy.position.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
-      dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      const scale = 0.5 + Math.random() * 1.1;
-      dummy.scale.setScalar(scale);
-      dummy.updateMatrix();
-      asteroidMesh.setMatrixAt(i, dummy.matrix);
-    }
-    asteroidMesh.rotation.copy(points.rotation); // same tilt as this genre's cluster, for visual cohesion
-    group.add(asteroidMesh);
-    rotatingClusters.push(asteroidMesh);
-
-    const beats = BEATS.filter((b) => b.genre === genre.id);
-    beats.forEach((beat, i) => addPlanetForBeat(beat, group, i));
-  });
-
-  // ===== Genre navigation: pills + clicking a sun both call this =====
-  let activeGenreId = 'all';
-  let flightId = 0;
-
-  function flyTo(targetPos, targetLookAt, duration) {
-    const myFlight = ++flightId;
-    const startPos = camera.position.clone();
-    const startTarget = controls.target.clone();
-    const startTime = performance.now();
-    function step(now) {
-      if (myFlight !== flightId) return;
-      const t = Math.min(1, (now - startTime) / duration);
-      const ease = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-      camera.position.lerpVectors(startPos, targetPos, ease);
-      controls.target.lerpVectors(startTarget, targetLookAt, ease);
-      controls.update();
-      if (t < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
   }
 
   function triggerFlash() {
@@ -482,35 +180,80 @@
     flashEl.classList.add('active');
   }
 
+  // ===== Cards (CSS3DObject wrapping real DOM elements) =====
+  // Positions are a loose scatter, not the old solar-system layout —
+  // genre no longer determines placement at all, only which cards are
+  // currently visible (see activateGenre below).
+  const cardObjects = []; // { obj, beat, genre, tiltZ }
+
+  function addCardForBeat(beat, index, total) {
+    const genre = GENRES.find((g) => g.id === beat.genre);
+    const genreColorCss = genre ? hexToCss(genre.color) : '';
+    const genreLabel = genre ? genre.name : beat.genre;
+
+    const el = document.createElement('div');
+    el.className = 'cloud-card';
+    el.innerHTML = `
+      <div class="cloud-card-cover">${beat.coverArtUrl ? `<img src="${beat.coverArtUrl}" alt="">` : ''}</div>
+      <div class="cloud-card-title">${beat.title}</div>
+      <div class="cloud-card-meta">${genreLabel.toUpperCase()} · ${beat.meta}</div>
+      <div class="cloud-card-row">
+        <span class="cloud-card-price">$${beat.licenses.mp3}</span>
+        <button type="button" class="cloud-card-playbtn beat-play" data-name="${beat.title}" data-audio-url="${beat.audioUrl || ''}" data-genre-color="${genreColorCss}" data-cover-url="${beat.coverArtUrl || ''}" aria-label="Preview"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg></button>
+      </div>
+      <button type="button" class="cloud-card-buy">Buy beat &rarr;</button>
+    `;
+    el.querySelector('.cloud-card-buy').addEventListener('click', () => showBeatInfo(beat));
+    const cardPlayBtn = el.querySelector('.cloud-card-playbtn');
+    if (cardPlayBtn && window.qsWireBeatPlayButton) window.qsWireBeatPlayButton(cardPlayBtn);
+
+    const obj = new THREE.CSS3DObject(el);
+
+    const angle = (index / Math.max(total, 1)) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+    const radius = 55 + Math.random() * 60;
+    const heightSpread = (Math.random() - 0.5) * 75;
+    obj.position.set(Math.cos(angle) * radius, heightSpread, Math.sin(angle) * radius);
+
+    // Fixed tilt for visual variety (per spec: ~14deg on outer cards),
+    // applied as a local Z rotation on top of billboarding, which is
+    // recomputed every frame in animate() so the card (and its buy
+    // button) always faces the camera regardless of where it's dragged.
+    const distFromCenter = Math.sqrt(obj.position.x ** 2 + obj.position.z ** 2);
+    const tiltFactor = Math.min(1, distFromCenter / 110);
+    const tiltZ = (Math.random() < 0.5 ? -1 : 1) * tiltFactor * (14 * Math.PI / 180);
+
+    scene.add(obj);
+    cardObjects.push({ obj, beat, genre: beat.genre, tiltZ });
+    return obj;
+  }
+
+  // ===== Genre filtering =====
+  // No more camera-warping to a "sun" — there isn't one anymore. The
+  // camera stays exactly where the visitor left it; picking a genre
+  // just shows/hides matching cards. Free drag/zoom/orbit is completely
+  // unaffected either way, matching the "same feel" requirement.
+  let activeGenreId = 'all';
+
   function activateGenre(id) {
     document.querySelectorAll('.galaxy-section .pill').forEach((p) => {
       p.classList.toggle('active', p.dataset.genre === id);
     });
     triggerFlash();
+    activeGenreId = id;
 
-    if (id === 'all') {
-      activeGenreId = 'all';
-      Object.keys(genreGroups).forEach((gid) => { genreGroups[gid].visible = true; });
-      flyTo(new THREE.Vector3(0, 60, 165), new THREE.Vector3(0, 0, 0), 420);
-      const emptyHint = document.getElementById('galaxy-empty-hint');
-      if (emptyHint) emptyHint.classList.remove('visible');
-    } else {
-      const genre = GENRES.find((g) => g.id === id);
-      if (!genre) return;
-      activeGenreId = id;
-      Object.keys(genreGroups).forEach((gid) => { genreGroups[gid].visible = gid === id; });
-      const center = new THREE.Vector3(genre.pos[0], genre.pos[1], genre.pos[2]);
-      // Further back than the sun itself so the surrounding planets
-      // (which sit up to ~ORBIT_RADIUS*1.25 away) are comfortably in frame.
-      const camPos = center.clone().add(new THREE.Vector3(0, 13, 42));
-      flyTo(camPos, center, 420);
-      // Controls stay fully enabled the entire time — same free
-      // drag/orbit/zoom as overview mode, no locked camera.
+    cardObjects.forEach(({ obj, genre }) => {
+      const show = id === 'all' || genre === id;
+      obj.element.style.display = show ? '' : 'none';
+    });
 
-      const emptyHint = document.getElementById('galaxy-empty-hint');
-      if (emptyHint) {
-        const hasBeats = BEATS.some((b) => b.genre === id);
-        emptyHint.textContent = `No ${genre.name} beats in the catalog yet — check back soon.`;
+    const emptyHint = document.getElementById('galaxy-empty-hint');
+    if (emptyHint) {
+      if (id === 'all') {
+        emptyHint.classList.remove('visible');
+      } else {
+        const genreObj = GENRES.find((g) => g.id === id);
+        const hasBeats = cardObjects.some((c) => c.genre === id);
+        emptyHint.textContent = `No ${genreObj ? genreObj.name : id} beats in the catalog yet — check back soon.`;
         emptyHint.classList.toggle('visible', !hasBeats);
       }
     }
@@ -520,27 +263,11 @@
     pill.addEventListener('click', () => activateGenre(pill.dataset.genre));
   });
 
-  // ===== Click a sun or a planet to act on it =====
-  const raycaster = new THREE.Raycaster();
-  const mouseVec = new THREE.Vector2();
-  let dragDistance = 0;
-  renderer.domElement.addEventListener('pointerdown', () => { dragDistance = 0; });
-  renderer.domElement.addEventListener('pointermove', (e) => { dragDistance += Math.abs(e.movementX) + Math.abs(e.movementY); });
-  renderer.domElement.addEventListener('click', (e) => {
-    if (dragDistance > 6) return; // was a drag/orbit, not a click
-    const rect = renderer.domElement.getBoundingClientRect();
-    mouseVec.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    mouseVec.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    raycaster.setFromCamera(mouseVec, camera);
-
-    const planetHits = raycaster.intersectObjects(planetMeshes);
-    if (planetHits.length) {
-      showBeatInfo(planetHits[0].object.userData.beat);
-      return;
-    }
-    const sunHits = raycaster.intersectObjects(sunMeshes);
-    if (sunHits.length) activateGenre(sunHits[0].object.userData.genreId);
-  });
+  // No raycasting/click-handling section needed here anymore — the buy
+  // and play buttons are real DOM <button> elements created above, each
+  // with its own addEventListener, exactly like any other button on the
+  // site. That's the entire point of switching to CSS3DObject: normal
+  // DOM events instead of a raycast hit-test against a 3D hitbox.
 
   // ===== License terms (confirmed terms — see chat for the full negotiation) =====
   const LICENSE_TERMS = {
@@ -880,9 +607,18 @@ By typing your name below and checking the agreement box, you are electronically
         coverArtUrl: row.cover_art_url || '',
       };
       BEATS.push(beat);
-      const group = genreGroups[row.genre];
-      const existingCount = BEATS.filter((x) => x.genre === row.genre).length - 1;
-      addPlanetForBeat(beat, group, existingCount);
+      const existingIndex = BEATS.length - 1;
+      addCardForBeat(beat, existingIndex, existingIndex + 1); // total gets refined below once all rows are in
+    });
+    // Re-space cards now that the real total count is known — the
+    // index/total passed above during the loop was only a running
+    // count, not the final total, which affects how evenly the angle
+    // step divides the circle.
+    cardObjects.forEach(({ obj }, i) => {
+      const angle = (i / Math.max(cardObjects.length, 1)) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+      const radius = 55 + Math.random() * 60;
+      obj.position.x = Math.cos(angle) * radius;
+      obj.position.z = Math.sin(angle) * radius;
     });
     // script.js (a separate closure) drives the floating player's
     // prev/next/shuffle controls and needs a flat, navigable list —
@@ -977,26 +713,15 @@ By typing your name below and checking the agreement box, you are electronically
 
     controls.update();
 
-    fieldStars.rotation.y += delta * 0.01;
-    rotatingClusters.forEach((pts) => { pts.rotation.y += delta * 0.15; pts.rotation.x += delta * 0.03; });
-    pulsingHalos.forEach(({ mesh, baseOpacity, phase }) => {
-      mesh.material.opacity = baseOpacity + Math.sin(t * 1.4 + phase) * baseOpacity * 0.3;
+    // Billboard every card toward the camera, then apply its fixed
+    // tilt on top — this is what keeps the buy button facing the
+    // viewer no matter how the camera's been dragged around, per spec.
+    // Vertical float drift is handled by the .cloud-card CSS animation
+    // directly on the real DOM element, not here.
+    cardObjects.forEach(({ obj, tiltZ }) => {
+      obj.quaternion.copy(camera.quaternion);
+      obj.rotateZ(tiltZ);
     });
-    rotatingPlanets.forEach((mesh) => { mesh.rotation.y += delta * 0.12; });
-    orbitingPlanets.forEach((mesh) => {
-      const o = mesh.userData.orbit;
-      o.angle += delta * o.speed;
-      mesh.position.set(Math.cos(o.angle) * o.radius, o.y, Math.sin(o.angle) * o.radius);
-
-      const posAttr = mesh.userData.trail.geometry.attributes.position;
-      const arr = posAttr.array;
-      arr.copyWithin(0, 3, TRAIL_LENGTH * 3); // shift every point back one slot
-      arr[(TRAIL_LENGTH - 1) * 3] = mesh.position.x;
-      arr[(TRAIL_LENGTH - 1) * 3 + 1] = mesh.position.y;
-      arr[(TRAIL_LENGTH - 1) * 3 + 2] = mesh.position.z;
-      posAttr.needsUpdate = true;
-    });
-    starMaterials.forEach((m) => { m.uniforms.uTime.value = t; });
 
     renderer.render(scene, camera);
   }

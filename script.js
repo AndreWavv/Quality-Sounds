@@ -360,7 +360,11 @@ if (fpRepeat) {
 if (fpPrev) fpPrev.addEventListener('click', () => playAdjacent(-1));
 if (fpNext) fpNext.addEventListener('click', () => playAdjacent(1));
 
-document.querySelectorAll('.beat-play').forEach((btn) => {
+// Reusable so dynamically-created buttons (the cloud scene's cards,
+// added later once the async Supabase fetch resolves) can be wired up
+// the same way, not just whatever .beat-play elements existed in the
+// static HTML at the moment this file first ran.
+function wireBeatPlayButton(btn) {
   btn.addEventListener('click', () => {
     const isThisAlreadyPlaying = btn === activePlayBtn && !previewAudio.paused;
     if (isThisAlreadyPlaying) {
@@ -383,7 +387,10 @@ document.querySelectorAll('.beat-play').forEach((btn) => {
     const idx = queue.findIndex((t) => t.audioUrl === track.audioUrl && t.name === track.name);
     playTrack(track, btn, idx);
   });
-});
+}
+window.qsWireBeatPlayButton = wireBeatPlayButton;
+
+document.querySelectorAll('.beat-play').forEach(wireBeatPlayButton);
 
 if (fpClose) {
   fpClose.addEventListener('click', stopPreview);
