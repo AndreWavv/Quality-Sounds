@@ -1081,30 +1081,44 @@ footer {
 .simple-grid-section {
   padding: 60px 5vw 100px;
 }
-.genre-row-section { margin-bottom: 36px; }
-.genre-row-heading {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--grey);
-  margin-bottom: 14px;
-}
-.genre-row-scroll {
+.catalog-filter-tabs {
   display: flex;
-  gap: 18px;
-  overflow-x: auto;
-  padding-bottom: 10px;
-  scroll-snap-type: x proximity;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+.catalog-filter-tab {
+  padding: 8px 18px;
+  border-radius: 100px;
+  border: 1px solid var(--hairline);
+  background: rgba(255,255,255,0.04);
+  color: var(--grey);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.catalog-filter-tab:hover { color: var(--white); border-color: var(--purple-bright); }
+.catalog-filter-tab.active {
+  background: rgba(157,92,255,0.18);
+  border-color: var(--purple-bright);
+  color: var(--purple-bright);
+}
+
+.simple-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
 }
 /* Cards here are the exact same .cloud-card markup as the rings, just
    rendered as plain in-flow DOM elements — no CSS3DObject, no Three.js
    involved at all, since this section is deliberately just a normal,
-   scrollable row with no 3D. */
-.genre-row-scroll .cloud-card {
-  flex: 0 0 200px;
-  animation: none; /* the ring cards drift; row cards stay put — this is the deliberately plain, no-surprises section */
-  scroll-snap-align: start;
+   filterable grid with no 3D. */
+.simple-grid .cloud-card {
+  width: 100%;
+  animation: none; /* the ring cards drift; grid cards stay put — this is the deliberately plain, no-surprises section */
 }
 
 
@@ -1171,8 +1185,8 @@ footer {
 @media (max-width: 700px) {
   .checkout-screen-card { padding: 20px; max-width: 100%; }
   .checkout-contract-scrollbox { max-height: 140px; }
-  .genre-row-scroll { gap: 12px; }
-  .genre-row-scroll .cloud-card { flex-basis: 150px; }
+  .simple-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .catalog-filter-tab { padding: 7px 14px; font-size: 0.65rem; }
   .galaxy-wrap { height: 520px; margin: 16px 4vw 60px; }
   .cloud-card { width: 150px; }
 }

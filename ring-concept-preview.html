@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ring Concept Preview — NOT the real site</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0d; color: #F4F4F7; font-family: system-ui, sans-serif; overflow: hidden; }
+  .banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: #9D5CFF; color: #fff; text-align: center;
+    padding: 10px; font-size: 0.85rem; font-weight: 700;
+  }
+  .scene-wrap {
+    position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
+  }
+  #viewport { position: absolute; inset: 0; cursor: grab; }
+  #viewport:active { cursor: grabbing; }
+  .label-tag {
+    position: fixed; z-index: 50; background: rgba(0,0,0,0.7);
+    padding: 6px 14px; border-radius: 100px; font-size: 0.75rem;
+    font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  #label-a { top: 55px; left: 20px; color: #86A6FF; }
+  #label-b { top: 55px; right: 20px; color: #FF6B6B; }
+  .hint {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    font-size: 0.75rem; color: rgba(255,255,255,0.6); z-index: 50; text-align: center;
+  }
+  .card {
+    width: 90px; height: 120px; border-radius: 8px;
+    background: rgba(20,20,26,0.85); border: 1px solid;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: 700; text-align: center;
+    backdrop-filter: blur(6px);
+  }
+</style>
+</head>
+<body>
+
+<div class="banner">PREVIEW ONLY — not connected to real beats, just checking the shape/motion before building this for real</div>
+<div class="label-tag" id="label-a">A — Flat Rings (horizontal / vertical / diagonal)</div>
+<div class="label-tag" id="label-b">B — Rotating Column (grid wrapped around a cylinder)</div>
+<div class="scene-wrap"><div id="viewport"></div></div>
+<p class="hint">Drag to look around · Scroll to zoom · Click and hold a card to pause + scrub that ring/column</p>
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
+<script>
+(function () {
+  const container = document.getElementById('viewport');
+  const width = window.innerWidth, height = window.innerHeight - 40;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, width / height, 1, 3000);
+  camera.position.set(0, 150, 750);
+
+  const renderer = new THREE.CSS3DRenderer();
+  renderer.setSize(width, height);
+  container.appendChild(renderer.domElement);
+
+  // ---- Free camera (same feel as the real site: damped drag-rotate + damped scroll-zoom) ----
+  let rotTheta = 0, rotPhi = Math.PI / 2.3, rotVelTheta = 0, rotVelPhi = 0;
+  let dragging = false, lastX = 0, lastY = 0;
+  const ROT_FRICTION = 0.92;
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (e.target !== renderer.domElement) return; // clicking a card is handled separately below
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    rotVelTheta += (e.clientX - lastX) * 0.004;
+    rotVelPhi += (e.clientY - lastY) * 0.004;
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  window.addEventListener('pointerup', () => { dragging = false; });
+
+  let dist = 750;
+  renderer.domElement.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    dist = Math.max(300, Math.min(1400, dist + e.deltaY * 0.4));
+  }, { passive: false });
+
+  function updateCamera() {
+    rotVelTheta *= ROT_FRICTION; rotVelPhi *= ROT_FRICTION;
+    rotTheta += rotVelTheta; rotPhi += rotVelPhi;
+    rotPhi = Math.max(0.3, Math.min(Math.PI - 0.3, rotPhi));
+    camera.position.x = dist * Math.sin(rotPhi) * Math.sin(rotTheta);
+    camera.position.y = dist * Math.cos(rotPhi);
+    camera.position.z = dist * Math.sin(rotPhi) * Math.cos(rotTheta);
+    camera.lookAt(0, 0, 0);
+  }
+
+  // ---- Shared card creation ----
+  const groups = []; // { obj, angle, autoSpeed, paused, cards:[{obj, angleOffset, colOffset}], mode, center }
+  let dragTarget = null, dragStartX = 0, dragStartAngle = 0;
+
+  function makeCard(text, color) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.style.borderColor = color;
+    el.style.color = color;
+    el.textContent = text;
+    return el;
+  }
+
+  function attachDrag(el, ring) {
+    el.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      dragTarget = ring;
+      ring.paused = true;
+      dragStartX = e.clientX;
+      dragStartAngle = ring.angle;
+    });
+  }
+  window.addEventListener('pointermove', (e) => {
+    if (!dragTarget) return;
+    dragTarget.angle = dragStartAngle + (e.clientX - dragStartX) * 0.012;
+  });
+  window.addEventListener('pointerup', () => { dragTarget = null; });
+
+  // ---- A: Flat rings, one circle each, three orientations ----
+  const RING_TILT = Math.PI / 4;
+  function ringOffset(orientation, radius, a) {
+    if (orientation === 'horizontal') return { x: Math.cos(a)*radius, y: 0, z: Math.sin(a)*radius };
+    if (orientation === 'vertical') return { x: Math.cos(a)*radius, y: Math.sin(a)*radius, z: 0 };
+    return { x: Math.cos(a)*radius, y: Math.sin(a)*radius*Math.cos(RING_TILT), z: Math.sin(a)*radius*Math.sin(RING_TILT) };
+  }
+  const ringDefs = [
+    { orientation: 'horizontal', color: '#86A6FF', center: { x: -420, y: 60, z: 0 }, count: 6 },
+    { orientation: 'vertical', color: '#C89EFF', center: { x: -220, y: 0, z: -60 }, count: 6 },
+    { orientation: 'diagonal', color: '#6BFFB8', center: { x: -20, y: 20, z: -20 }, count: 6 },
+  ];
+  ringDefs.forEach((def) => {
+    const ring = { orientation: def.orientation, center: def.center, radius: 110, angle: Math.random()*Math.PI*2, autoSpeed: 0.15, paused: false, cards: [] };
+    for (let i = 0; i < def.count; i++) {
+      const el = makeCard(def.orientation.toUpperCase(), def.color);
+      attachDrag(el, ring);
+      const obj = new THREE.CSS3DObject(el);
+      scene.add(obj);
+      ring.cards.push({ obj, angleOffset: (i / def.count) * Math.PI * 2 });
+    }
+    groups.push({ type: 'ring', ring });
+  });
+
+  // ---- B: Rotating column — a grid of cards wrapped around a cylinder, multiple rows tall ----
+  const columnColor = '#FF6B6B';
+  const column = { center: { x: 320, y: 0, z: 0 }, radius: 140, angle: Math.random()*Math.PI*2, autoSpeed: 0.15, paused: false, cards: [] };
+  const COLS_AROUND = 8, ROWS_TALL = 3, ROW_SPACING = 140;
+  for (let row = 0; row < ROWS_TALL; row++) {
+    for (let c = 0; c < COLS_AROUND; c++) {
+      const el = makeCard('COLUMN', columnColor);
+      attachDrag(el, column);
+      const obj = new THREE.CSS3DObject(el);
+      scene.add(obj);
+      column.cards.push({
+        obj,
+        angleOffset: (c / COLS_AROUND) * Math.PI * 2,
+        yOffset: (row - (ROWS_TALL - 1) / 2) * ROW_SPACING,
+      });
+    }
+  }
+  groups.push({ type: 'column', ring: column });
+
+  function updateGroups() {
+    groups.forEach(({ type, ring }) => {
+      if (!ring.paused) ring.angle += ring.autoSpeed * 0.016;
+      ring.cards.forEach((c) => {
+        let local;
+        if (type === 'ring') {
+          local = ringOffset(ring.orientation, ring.radius, ring.angle + c.angleOffset);
+        } else {
+          const a = ring.angle + c.angleOffset;
+          local = { x: Math.cos(a) * ring.radius, y: c.yOffset, z: Math.sin(a) * ring.radius };
+        }
+        c.obj.position.set(ring.center.x + local.x, ring.center.y + local.y, ring.center.z + local.z);
+        c.obj.quaternion.copy(camera.quaternion);
+      });
+    });
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    updateCamera();
+    updateGroups();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    const w = window.innerWidth, h = window.innerHeight - 40;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+})();
+</script>
+</body>
+</html>

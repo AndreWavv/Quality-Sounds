@@ -698,28 +698,47 @@ By typing your name below and checking the agreement box, you are electronically
       });
     });
 
-    // Simple grid section — organized into one row per genre (mirrors
-    // the rings above, one ring per genre), each its own horizontal
-    // scroll box rather than one flat list — keeps the page from
-    // growing unbounded once there are 25+ beats in the catalog.
-    const simpleGridGenres = document.getElementById('simple-grid-genres');
-    if (simpleGridGenres) {
+    // Simple grid section — filter tabs over ONE result area (the
+    // actual BeatStars pattern: click a genre, the same grid swaps to
+    // show only those beats), not separate stacked sections per genre.
+    const filterTabsEl = document.getElementById('catalog-filter-tabs');
+    const simpleGridEl = document.getElementById('simple-grid');
+    let activeCatalogFilter = 'all';
+
+    function renderCatalogGrid() {
+      if (!simpleGridEl) return;
+      const filtered = activeCatalogFilter === 'all'
+        ? BEATS
+        : BEATS.filter((b) => b.genre === activeCatalogFilter);
+      if (!filtered.length) {
+        simpleGridEl.innerHTML = '<p class="meta">No beats in this genre yet — check back soon.</p>';
+        return;
+      }
+      simpleGridEl.innerHTML = '';
+      filtered.forEach((beat) => {
+        const genreObj = GENRES.find((g) => g.id === beat.genre);
+        simpleGridEl.appendChild(buildCloudCard(beat, genreObj ? genreObj.name : beat.genre));
+      });
+    }
+
+    if (filterTabsEl) {
       if (!BEATS.length) {
-        simpleGridGenres.innerHTML = '<p class="meta">No beats in the catalog yet — check back soon.</p>';
+        filterTabsEl.style.display = 'none';
+        if (simpleGridEl) simpleGridEl.innerHTML = '<p class="meta">No beats in the catalog yet — check back soon.</p>';
       } else {
-        simpleGridGenres.innerHTML = '';
-        GENRES.forEach((genre) => {
-          const genreBeats = BEATS.filter((b) => b.genre === genre.id);
-          if (!genreBeats.length) return; // skip empty genres entirely rather than showing an empty row
-          const section = document.createElement('div');
-          section.className = 'genre-row-section';
-          section.innerHTML = `<h5 class="genre-row-heading">${genre.name}</h5><div class="genre-row-scroll"></div>`;
-          const scrollRow = section.querySelector('.genre-row-scroll');
-          genreBeats.forEach((beat) => {
-            scrollRow.appendChild(buildCloudCard(beat, genre.name));
+        const presentGenreIds = new Set(BEATS.map((b) => b.genre));
+        const tabs = [{ id: 'all', name: 'All' }, ...GENRES.filter((g) => presentGenreIds.has(g.id))];
+        filterTabsEl.innerHTML = tabs.map((t) =>
+          `<button type="button" class="catalog-filter-tab${t.id === 'all' ? ' active' : ''}" data-genre="${t.id}">${t.name}</button>`
+        ).join('');
+        filterTabsEl.querySelectorAll('.catalog-filter-tab').forEach((tab) => {
+          tab.addEventListener('click', () => {
+            activeCatalogFilter = tab.dataset.genre;
+            filterTabsEl.querySelectorAll('.catalog-filter-tab').forEach((t) => t.classList.toggle('active', t === tab));
+            renderCatalogGrid();
           });
-          simpleGridGenres.appendChild(section);
         });
+        renderCatalogGrid();
       }
     }
     // script.js (a separate closure) drives the floating player's
