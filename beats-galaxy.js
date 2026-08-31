@@ -89,7 +89,7 @@
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 500);
-  camera.position.set(0, 60, 165);
+  camera.position.set(0, 100, 380);
 
   // CSS3DRenderer — renders real DOM elements positioned in 3D space,
   // not WebGL meshes. This is the actual fix for "the buy button was
@@ -105,8 +105,8 @@
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
-  controls.minDistance = 20;
-  controls.maxDistance = 320;
+  controls.minDistance = 60;
+  controls.maxDistance = 550;
   controls.target.set(0, 0, 0);
 
   // Custom damped zoom (OrbitControls' own wheel-zoom applies each tick
@@ -394,16 +394,32 @@ This Agreement is governed by the laws of the State of Illinois, USA.
 By typing your name below and checking the agreement box, you are electronically signing this Agreement.`;
   }
 
-  // ===== Beat licensing panel =====
-  const panel = document.getElementById('beat-info-panel');
+  // ===== Checkout screen =====
+  // One unified full-screen overlay now, not a sidebar panel plus a
+  // separate agreement modal — the contract is visible on the same
+  // screen, in its own scrollbox, directly above the checkout button.
+  // This also directly fixes the earlier bug: the old sidebar was
+  // position:absolute inside .galaxy-wrap's overflow:hidden box, and
+  // had grown too tall for it — the real buy button was very likely
+  // being clipped out of reach while the visually-identical
+  // exclusive-inquire button (same .btn.solid styling) remained
+  // reachable and absorbed the click instead.
+  const panel = document.getElementById('checkout-screen');
   const biGenre = document.getElementById('bi-genre');
   const biTitle = document.getElementById('bi-title');
   const biMeta = document.getElementById('bi-meta');
   const biPlay = document.getElementById('bi-play');
-  const biBuy = document.getElementById('bi-buy');
   const biSelectedPrice = document.getElementById('bi-selected-price');
   const closeBtn = document.getElementById('beat-info-close');
   const licenseButtons = document.querySelectorAll('#bi-license-options .license-option');
+
+  const agreementText = document.getElementById('agreement-text');
+  const agreementTierLabel = document.getElementById('agreement-tier-label');
+  const agreementPriceLabel = document.getElementById('agreement-price-label');
+  const agreementNameInput = document.getElementById('agreement-name');
+  const agreementCheckbox = document.getElementById('agreement-checkbox');
+  const checkoutBuyBtn = document.getElementById('checkout-buy');
+  const checkoutBuyLabel = document.getElementById('checkout-buy-label');
 
   let selectedTier = 'mp3';
   let currentPanelBeat = null;
@@ -417,6 +433,29 @@ By typing your name below and checking the agreement box, you are electronically
     const v = currentPanelBeat.licenses[selectedTier];
     if (biSelectedPrice) biSelectedPrice.textContent = formatPrice(v);
   }
+
+  // Regenerates the visible contract text for whichever tier is
+  // currently selected — called both when the screen first opens and
+  // whenever the visitor switches tiers, since price/terms differ per
+  // tier and the contract is always visible now, not generated once
+  // behind a separate "open agreement" click.
+  function refreshAgreementText() {
+    if (!currentPanelBeat) return;
+    const t = LICENSE_TERMS[selectedTier];
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    if (agreementTierLabel) agreementTierLabel.textContent = t.name;
+    if (agreementPriceLabel) agreementPriceLabel.textContent = formatPrice(currentPanelBeat.licenses[selectedTier]);
+    if (agreementText) agreementText.textContent = buildContractText(currentPanelBeat, selectedTier, '_________________', today);
+  }
+
+  function updateCheckoutButtonState() {
+    if (!checkoutBuyBtn) return;
+    const nameOk = agreementNameInput && agreementNameInput.value.trim().length > 1;
+    const checkOk = agreementCheckbox && agreementCheckbox.checked;
+    checkoutBuyBtn.disabled = !(nameOk && checkOk);
+  }
+  if (agreementNameInput) agreementNameInput.addEventListener('input', updateCheckoutButtonState);
+  if (agreementCheckbox) agreementCheckbox.addEventListener('change', updateCheckoutButtonState);
 
   function showBeatInfo(beat) {
     currentPanelBeat = beat;
@@ -443,8 +482,18 @@ By typing your name below and checking the agreement box, you are electronically
       if (priceEl) priceEl.textContent = formatPrice(beat.licenses[tier]);
     });
     updateSelectedPrice();
+
+    if (agreementNameInput) agreementNameInput.value = '';
+    if (agreementCheckbox) agreementCheckbox.checked = false;
+    refreshAgreementText();
+    updateCheckoutButtonState();
+
     if (panel) panel.classList.add('visible');
     refreshLikeAndFavoriteUI(beat);
+  }
+
+  function closeCheckoutScreen() {
+    if (panel) panel.classList.remove('visible');
   }
 
   const biLikeBtn = document.getElementById('bi-like');
@@ -478,10 +527,10 @@ By typing your name below and checking the agreement box, you are electronically
   if (biFavoriteBtn) {
     biFavoriteBtn.addEventListener('change', async () => {
       if (!currentPanelBeat || !currentPanelBeat.id || !window.qsLibrary) return;
-      const wantsFavorited = biFavoriteBtn.checked; // the box already flipped visually on click
+      const wantsFavorited = biFavoriteBtn.checked;
       const currentlyFavorited = !wantsFavorited;
       const nowFavorited = await window.qsLibrary.toggleFavorite(currentPanelBeat.id, currentlyFavorited);
-      biFavoriteBtn.checked = nowFavorited; // reconcile with what the server actually confirmed
+      biFavoriteBtn.checked = nowFavorited;
     });
   }
   if (biAddPlaylistBtn) {
@@ -496,15 +545,9 @@ By typing your name below and checking the agreement box, you are electronically
       selectedTier = btn.dataset.tier;
       licenseButtons.forEach((b) => b.classList.toggle('active', b === btn));
       updateSelectedPrice();
+      refreshAgreementText(); // price/terms differ per tier — regenerate since the contract is always visible now
     });
   });
-
-  if (biBuy) {
-    biBuy.addEventListener('click', () => {
-      if (!currentPanelBeat) return;
-      openAgreementModal(currentPanelBeat, selectedTier);
-    });
-  }
 
   const biExclusive = document.getElementById('bi-exclusive-inquire');
   if (biExclusive) {
@@ -531,55 +574,11 @@ By typing your name below and checking the agreement box, you are electronically
     });
   }
 
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => panel.classList.remove('visible'));
-  }
+  if (closeBtn) closeBtn.addEventListener('click', closeCheckoutScreen);
 
-  // ===== License agreement modal =====
-  const agreementModal = document.getElementById('agreement-modal');
-  const agreementText = document.getElementById('agreement-text');
-  const agreementTierLabel = document.getElementById('agreement-tier-label');
-  const agreementPriceLabel = document.getElementById('agreement-price-label');
-  const agreementNameInput = document.getElementById('agreement-name');
-  const agreementCheckbox = document.getElementById('agreement-checkbox');
-  const agreementConfirmBtn = document.getElementById('agreement-confirm');
-  const agreementCancelBtn = document.getElementById('agreement-cancel');
-
-  let agreementBeat = null;
-  let agreementTier = null;
-
-  function updateAgreementConfirmState() {
-    if (!agreementConfirmBtn) return;
-    const nameOk = agreementNameInput && agreementNameInput.value.trim().length > 1;
-    const checkOk = agreementCheckbox && agreementCheckbox.checked;
-    agreementConfirmBtn.disabled = !(nameOk && checkOk);
-  }
-
-  function openAgreementModal(beat, tierKey) {
-    agreementBeat = beat;
-    agreementTier = tierKey;
-    const t = LICENSE_TERMS[tierKey];
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    if (agreementTierLabel) agreementTierLabel.textContent = t.name;
-    if (agreementPriceLabel) agreementPriceLabel.textContent = formatPrice(beat.licenses[tierKey]);
-    if (agreementText) agreementText.textContent = buildContractText(beat, tierKey, '_________________', today);
-    if (agreementNameInput) agreementNameInput.value = '';
-    if (agreementCheckbox) agreementCheckbox.checked = false;
-    updateAgreementConfirmState();
-    if (agreementModal) agreementModal.classList.add('visible');
-  }
-
-  function closeAgreementModal() {
-    if (agreementModal) agreementModal.classList.remove('visible');
-  }
-
-  if (agreementNameInput) agreementNameInput.addEventListener('input', updateAgreementConfirmState);
-  if (agreementCheckbox) agreementCheckbox.addEventListener('change', updateAgreementConfirmState);
-  if (agreementCancelBtn) agreementCancelBtn.addEventListener('click', closeAgreementModal);
-
-  if (agreementConfirmBtn) {
-    agreementConfirmBtn.addEventListener('click', async () => {
-      if (agreementConfirmBtn.disabled || !agreementBeat) return;
+  if (checkoutBuyBtn) {
+    checkoutBuyBtn.addEventListener('click', async () => {
+      if (checkoutBuyBtn.disabled || !currentPanelBeat) return;
       const fullName = agreementNameInput.value.trim();
       const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -590,7 +589,7 @@ By typing your name below and checking the agreement box, you are electronically
       const { data: sessionData } = await window.qsClient.auth.getSession();
       if (!sessionData || !sessionData.session) {
         alert('Please sign in first — checkout requires an account so you can access your license and receive renewal reminders.');
-        closeAgreementModal();
+        closeCheckoutScreen();
         const trigger = document.querySelector('[data-open-auth]');
         if (trigger) trigger.click();
         return;
@@ -611,28 +610,28 @@ By typing your name below and checking the agreement box, you are electronically
         // proceed without it
       }
 
-      agreementConfirmBtn.disabled = true;
-      agreementConfirmBtn.textContent = 'Redirecting to checkout...';
+      checkoutBuyBtn.disabled = true;
+      if (checkoutBuyLabel) checkoutBuyLabel.textContent = 'Redirecting...';
 
       const { data: order, error: orderError } = await window.qsClient
         .from('orders')
         .insert({
           buyer_id: buyerId,
-          beat_id: agreementBeat.id, // real Supabase beat id — was incorrectly using the title as a placeholder before real beat IDs existed
-          license_type: agreementTier,
-          price_paid: agreementBeat.licenses[agreementTier],
+          beat_id: currentPanelBeat.id,
+          license_type: selectedTier,
+          price_paid: currentPanelBeat.licenses[selectedTier],
           status: 'pending',
           agreed_full_name: fullName,
           agreed_at: new Date().toISOString(),
           agreed_ip: ip,
-          license_agreement_snapshot: buildContractText(agreementBeat, agreementTier, fullName, today),
+          license_agreement_snapshot: buildContractText(currentPanelBeat, selectedTier, fullName, today),
         })
         .select()
         .single();
 
       if (orderError || !order) {
-        agreementConfirmBtn.disabled = false;
-        agreementConfirmBtn.textContent = 'Confirm & Continue';
+        checkoutBuyBtn.disabled = false;
+        if (checkoutBuyLabel) checkoutBuyLabel.textContent = 'Confirm & Checkout';
         alert(`Something went wrong creating your order: ${orderError ? orderError.message : 'unknown error'}. Please try again.`);
         return;
       }
@@ -642,13 +641,13 @@ By typing your name below and checking the agreement box, you are electronically
       });
 
       if (checkoutError || !checkoutData || !checkoutData.url) {
-        agreementConfirmBtn.disabled = false;
-        agreementConfirmBtn.textContent = 'Confirm & Continue';
+        checkoutBuyBtn.disabled = false;
+        if (checkoutBuyLabel) checkoutBuyLabel.textContent = 'Confirm & Checkout';
         alert(`Something went wrong starting checkout: ${checkoutError ? checkoutError.message : 'no checkout URL returned'}. Please try again.`);
         return;
       }
 
-      closeAgreementModal();
+      closeCheckoutScreen();
       window.location.href = checkoutData.url;
     });
   }

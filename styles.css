@@ -41,7 +41,7 @@ html { scroll-behavior: smooth; }
    didn't work out, so this page now scrolls normally. */
 
 body {
-  background: linear-gradient(180deg, #FFFFFF 0%, #E6E6EA 45%, #C7C7CE 100%);
+  background: linear-gradient(180deg, #C4C4CA 0%, #A9A9B1 45%, #8C8C95 100%);
   color: #17171A;
   font-family: var(--body);
   font-size: 16px;
@@ -856,35 +856,41 @@ footer {
   --cloud-buy-text: #0A0850;
 }
 
-/* Videos are wide, distant landscape shots — cropped/scaled tighter so
-   it reads as "inside the atmosphere" rather than "photo behind cards".
-   object-position targets the cloud-sea/sun region on the day clip and
-   the starfield/Milky Way region on the night clip, avoiding the sharp
-   mountain silhouettes in both, which read as distant landscape rather
-   than immersive atmosphere. */
-.cloud-video {
+/* Procedural clouds — soft, blurred, drifting gradient shapes rather
+   than stock video footage. Same underlying technique as the hero's
+   .blob elements (large blurred gradient shapes), scaled up and tuned
+   for an atmospheric cloud feel instead of a decorative accent. */
+.cloud-sky {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 65% 35%;
-  transform: scale(1.3);
   z-index: 0;
-  opacity: 1;
-  transition: opacity 1.4s ease;
+  background: linear-gradient(160deg, var(--cloud-sky-1), var(--cloud-sky-2), var(--cloud-sky-3));
 }
-.cloud-video-night {
-  object-position: 40% 15%;
-  transform: scale(1.25);
-  opacity: 0;
-}
-.galaxy-wrap[data-theme="night"] .cloud-video:not(.cloud-video-night) { opacity: 0; }
-.galaxy-wrap[data-theme="night"] .cloud-video-night { opacity: 1; }
 
+.cloud-procedural {
+  position: absolute;
+  inset: -15%;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse 45% 26% at 20% 72%, var(--cloud-light-glow) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 30% at 78% 50%, rgba(255,255,255,0.11) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 22% at 48% 88%, rgba(255,255,255,0.15) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 35% at 88% 18%, rgba(255,255,255,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 38% 20% at 8% 30%, rgba(255,255,255,0.09) 0%, transparent 70%);
+  filter: blur(50px);
+  animation: cloud-drift 70s ease-in-out infinite alternate;
+}
+.galaxy-wrap[data-theme="night"] .cloud-procedural {
+  opacity: 0.5;
+  filter: blur(55px) brightness(0.65);
+}
+@keyframes cloud-drift {
+  0% { transform: translate(0%, 0%) scale(1); }
+  50% { transform: translate(-3%, 2%) scale(1.06); }
+  100% { transform: translate(2.5%, -2%) scale(1.03); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .cloud-video { display: none; }
-  .galaxy-wrap { background: linear-gradient(160deg, var(--cloud-sky-1), var(--cloud-sky-2), var(--cloud-sky-3)); }
+  .cloud-procedural { animation: none; }
 }
 
 .cloud-stars {
@@ -1081,6 +1087,62 @@ footer {
 
 .galaxy-viewport { cursor: grab; }
 .galaxy-viewport:active { cursor: grabbing; }
+
+/* Full-screen overlay, not a sidebar panel — position:fixed means this
+   completely escapes .galaxy-wrap's overflow:hidden clipping, which is
+   the actual structural fix for the original bug: content (including
+   the real buy button) was getting clipped inside a fixed-height
+   sidebar with nowhere to scroll, while a visually-identical button
+   (the exclusive-inquire link) stayed reachable and absorbed the click
+   instead. */
+.checkout-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0,0,0,0.78);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  padding: 40px 20px;
+  overflow-y: auto;
+}
+.checkout-screen.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.checkout-screen-card {
+  background: linear-gradient(160deg, #0a0a0d, #1b1b21);
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  padding: 32px;
+  width: 100%;
+  max-width: 460px;
+  position: relative;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+}
+
+.checkout-contract-block {
+  margin: 18px 0;
+  padding: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+}
+.checkout-contract-scrollbox {
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  line-height: 1.6;
+  color: var(--grey);
+  white-space: pre-wrap;
+  margin: 10px 0;
+  padding-right: 8px;
+}
 
 .beat-info-panel {
   position: absolute;

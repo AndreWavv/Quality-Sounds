@@ -137,8 +137,8 @@
   <p class="galaxy-hint">Drag to look around · Scroll to zoom · Click a card to view licenses</p>
 
   <div class="galaxy-wrap" data-lenis-prevent data-theme="day" id="cloud-scene-wrap">
-    <video class="cloud-video" id="cloud-video-day" autoplay loop muted playsinline src="clouds-day.mp4"></video>
-    <video class="cloud-video cloud-video-night" id="cloud-video-night" autoplay loop muted playsinline src="clouds-night.mp4"></video>
+    <div class="cloud-sky"></div>
+    <div class="cloud-procedural" id="cloud-procedural"></div>
     <div class="cloud-stars" id="cloud-stars"></div>
     <div class="cloud-sunbeams"></div>
     <div class="cloud-grain"></div>
@@ -148,52 +148,76 @@
     <div class="galaxy-engage-hint" id="galaxy-engage-hint">Click to look around &amp; zoom</div>
     <div class="galaxy-empty-hint" id="galaxy-empty-hint"></div>
 
-    <div class="beat-info-panel" id="beat-info-panel">
-      <button class="beat-info-close" id="beat-info-close" aria-label="Close">✕</button>
-      <span class="beat-genre" id="bi-genre">Trap</span>
-      <h4 id="bi-title">Track Title</h4>
-      <span class="meta" id="bi-meta">140 BPM · F Minor</span>
+    <div class="checkout-screen" id="checkout-screen">
+      <div class="checkout-screen-card">
+        <button class="beat-info-close" id="beat-info-close" aria-label="Close">✕</button>
 
-      <div class="license-options" id="bi-license-options">
-        <button type="button" class="license-option active" data-tier="mp3">
-          <span class="license-name">MP3 Lease</span>
-          <span class="license-price">$30</span>
-        </button>
-        <button type="button" class="license-option" data-tier="wav">
-          <span class="license-name">WAV Lease</span>
-          <span class="license-price">$75</span>
-        </button>
-        <button type="button" class="license-option" data-tier="stems">
-          <span class="license-name">Stems Lease</span>
-          <span class="license-price">$100</span>
-        </button>
-      </div>
-      <div class="bi-exclusive-card">
-        <div class="bi-exclusive-title">Want exclusive rights instead?</div>
-        <p class="meta">Full ownership, negotiated directly — no fixed price.</p>
-        <a href="#" id="bi-exclusive-inquire" class="btn solid" style="width:100%; justify-content:center; margin-top: 10px;">Email to Inquire</a>
-        <button type="button" id="bi-exclusive-copy" class="bi-exclusive-copy">Or copy: andre.wavbusiness@gmail.com</button>
-      </div>
+        <span class="beat-genre" id="bi-genre">Trap</span>
+        <h4 id="bi-title">Track Title</h4>
+        <span class="meta" id="bi-meta">140 BPM · F Minor</span>
 
-      <div class="bi-actions-row">
-        <button type="button" class="bi-icon-btn" id="bi-like" aria-label="Like">🤍 <span id="bi-like-count">0</span></button>
-        <button type="button" class="bi-icon-btn" id="bi-add-playlist" aria-label="Add to playlist">➕ Playlist</button>
-      </div>
-
-      <label class="fav-toggle" id="bi-favorite-wrap" style="margin-top: 10px;">
-        <input type="checkbox" class="fav-checkbox" id="bi-favorite">
-        <div class="fav-pill">
-          <span class="fav-label">FAVORITE</span>
-          <span class="fav-star"><svg viewBox="0 0 24 24"><defs><linearGradient id="fav-star-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#86A6FF"/><stop offset="100%" stop-color="#C89EFF"/></linearGradient></defs><path fill="url(#fav-star-grad)" d="M12 0C12.5 5.5 13 9 15 11C17 13 19.5 11.5 24 12C19.5 12.5 17 13 15 15C13 17 12.5 18.5 12 24C11.5 18.5 11 17 9 15C7 13 4.5 12.5 0 12C4.5 11.5 7 11 9 9C11 7 11.5 5.5 12 0Z"/></svg></span>
+        <div class="license-options" id="bi-license-options">
+          <button type="button" class="license-option active" data-tier="mp3">
+            <span class="license-name">MP3 Lease</span>
+            <span class="license-price">$30</span>
+          </button>
+          <button type="button" class="license-option" data-tier="wav">
+            <span class="license-name">WAV Lease</span>
+            <span class="license-price">$75</span>
+          </button>
+          <button type="button" class="license-option" data-tier="stems">
+            <span class="license-name">Stems Lease</span>
+            <span class="license-price">$100</span>
+          </button>
         </div>
-      </label>
 
-      <div class="preview-row">
-        <button class="preview-play-btn beat-play" id="bi-play" data-name="" aria-label="Preview"><span class="btn-preview-icon" data-icon><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg></span></button>
-        <canvas class="preview-waveform" id="bi-waveform" width="220" height="32"></canvas>
+        <div class="preview-row">
+          <button class="preview-play-btn beat-play" id="bi-play" data-name="" aria-label="Preview"><span class="btn-preview-icon" data-icon><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg></span></button>
+          <canvas class="preview-waveform" id="bi-waveform" width="220" height="32"></canvas>
+        </div>
+
+        <div class="bi-actions-row">
+          <button type="button" class="bi-icon-btn" id="bi-like" aria-label="Like">🤍 <span id="bi-like-count">0</span></button>
+          <button type="button" class="bi-icon-btn" id="bi-add-playlist" aria-label="Add to playlist">➕ Playlist</button>
+        </div>
+        <label class="fav-toggle" id="bi-favorite-wrap" style="margin-top: 10px;">
+          <input type="checkbox" class="fav-checkbox" id="bi-favorite">
+          <div class="fav-pill">
+            <span class="fav-label">FAVORITE</span>
+            <span class="fav-star"><svg viewBox="0 0 24 24"><defs><linearGradient id="fav-star-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#86A6FF"/><stop offset="100%" stop-color="#C89EFF"/></linearGradient></defs><path fill="url(#fav-star-grad)" d="M12 0C12.5 5.5 13 9 15 11C17 13 19.5 11.5 24 12C19.5 12.5 17 13 15 15C13 17 12.5 18.5 12 24C11.5 18.5 11 17 9 15C7 13 4.5 12.5 0 12C4.5 11.5 7 11 9 9C11 7 11.5 5.5 12 0Z"/></svg></span>
+          </div>
+        </label>
+
+        <!-- Contract sits directly above the checkout button, in its own
+             scrollable box, on the same screen — not hidden behind a
+             separate modal you have to click into first. -->
+        <div class="checkout-contract-block">
+          <div class="section-label" style="padding:0;">License Agreement — <span id="agreement-tier-label">MP3 Lease</span> (<span id="agreement-price-label">$30</span>)</div>
+          <pre id="agreement-text" class="checkout-contract-scrollbox"></pre>
+          <div class="field">
+            <label for="agreement-name">Type your full legal name to sign</label>
+            <input type="text" id="agreement-name" placeholder="Full legal name" autocomplete="name">
+          </div>
+          <label class="license-agree-row">
+            <input type="checkbox" id="agreement-checkbox">
+            I have read and agree to the terms above.
+          </label>
+        </div>
+
+        <p class="bi-warning">THIS BEAT IS NOT FREE. YOU NEED TO BUY A LICENSE IN ORDER TO UPLOAD ON ANY STREAMING SERVICES.</p>
+        <button type="button" class="btn solid" id="checkout-buy" disabled style="margin-top: 10px; width: 100%; justify-content: center;"><span id="checkout-buy-label">Confirm &amp; Checkout</span> — <span id="bi-selected-price">$30</span></button>
+
+        <!-- Deliberately plain .btn (not .btn.solid) so this can never
+             again be visually confused for the actual checkout button —
+             that exact confusion was the root cause of "buy just takes
+             me to the inquiry section". -->
+        <div class="bi-exclusive-card">
+          <div class="bi-exclusive-title">Want exclusive rights instead?</div>
+          <p class="meta">Full ownership, negotiated directly — no fixed price.</p>
+          <a href="#" id="bi-exclusive-inquire" class="btn" style="width:100%; justify-content:center; margin-top: 10px;">Email to Inquire</a>
+          <button type="button" id="bi-exclusive-copy" class="bi-exclusive-copy">Or copy: andre.wavbusiness@gmail.com</button>
+        </div>
       </div>
-      <p class="bi-warning">THIS BEAT IS NOT FREE. YOU NEED TO BUY A LICENSE IN ORDER TO UPLOAD ON ANY STREAMING SERVICES.</p>
-      <button type="button" class="btn solid" id="bi-buy" style="margin-top: 10px; width: 100%; justify-content: center;">Get License — <span id="bi-selected-price">$30</span></button>
     </div>
   </div>
 </section>
@@ -204,22 +228,6 @@
   <div class="simple-grid" id="simple-grid"><p class="meta">Loading beats...</p></div>
 </section>
 
-<div class="license-modal" id="agreement-modal">
-  <div class="license-modal-card">
-    <button class="beat-info-close" id="agreement-cancel" aria-label="Close">✕</button>
-    <div class="section-label" style="padding:0;">License Agreement — <span id="agreement-tier-label">MP3 Lease</span> (<span id="agreement-price-label">$30</span>)</div>
-    <pre id="agreement-text" class="license-modal-text"></pre>
-    <div class="field">
-      <label for="agreement-name">Type your full legal name to sign</label>
-      <input type="text" id="agreement-name" placeholder="Full legal name" autocomplete="name">
-    </div>
-    <label class="license-agree-row">
-      <input type="checkbox" id="agreement-checkbox">
-      I have read and agree to the terms above.
-    </label>
-    <button type="button" class="btn solid" id="agreement-confirm" disabled style="width:100%; justify-content:center;">Confirm &amp; Continue</button>
-  </div>
-</div>
 
 <div class="ticker" data-words="Trap,R&amp;B,Indie Pop,2000's Swag,Cinematic,House,Synthwave"></div>
 
