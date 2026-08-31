@@ -867,30 +867,26 @@ footer {
   background: linear-gradient(160deg, var(--cloud-sky-1), var(--cloud-sky-2), var(--cloud-sky-3));
 }
 
-.cloud-procedural {
+.cloud-silhouette {
   position: absolute;
-  inset: -15%;
+  left: -10%;
+  right: -10%;
+  bottom: 0;
+  width: 120%;
+  height: 42%;
   z-index: 1;
-  background:
-    radial-gradient(ellipse 45% 26% at 20% 72%, var(--cloud-light-glow) 0%, transparent 70%),
-    radial-gradient(ellipse 55% 30% at 78% 50%, rgba(255,255,255,0.32) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 22% at 48% 88%, rgba(255,255,255,0.40) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 35% at 88% 18%, rgba(255,255,255,0.22) 0%, transparent 70%),
-    radial-gradient(ellipse 38% 20% at 8% 30%, rgba(255,255,255,0.28) 0%, transparent 70%);
-  filter: blur(30px);
-  animation: cloud-drift 70s ease-in-out infinite alternate;
+  animation: cloud-drift 90s linear infinite alternate;
 }
-.galaxy-wrap[data-theme="night"] .cloud-procedural {
-  opacity: 0.6;
-  filter: blur(32px) brightness(0.8);
+.cloud-silhouette path {
+  fill: var(--cloud-sky-1);
+  transition: fill 1s ease;
 }
 @keyframes cloud-drift {
-  0% { transform: translate(0%, 0%) scale(1); }
-  50% { transform: translate(-3%, 2%) scale(1.06); }
-  100% { transform: translate(2.5%, -2%) scale(1.03); }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-4%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cloud-procedural { animation: none; }
+  .cloud-silhouette { animation: none; }
 }
 
 .cloud-stars {
@@ -1085,19 +1081,30 @@ footer {
 .simple-grid-section {
   padding: 60px 5vw 100px;
 }
-.simple-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 24px;
-  max-width: 1400px;
+.genre-row-section { margin-bottom: 36px; }
+.genre-row-heading {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--grey);
+  margin-bottom: 14px;
+}
+.genre-row-scroll {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scroll-snap-type: x proximity;
 }
 /* Cards here are the exact same .cloud-card markup as the rings, just
    rendered as plain in-flow DOM elements — no CSS3DObject, no Three.js
-   involved at all, since this section is deliberately just a normal
-   page grid with normal scrolling. */
-.simple-grid .cloud-card {
-  width: 100%;
-  animation: none; /* the ring cards drift; grid cards stay put — this is the deliberately plain, no-surprises section */
+   involved at all, since this section is deliberately just a normal,
+   scrollable row with no 3D. */
+.genre-row-scroll .cloud-card {
+  flex: 0 0 200px;
+  animation: none; /* the ring cards drift; row cards stay put — this is the deliberately plain, no-surprises section */
+  scroll-snap-align: start;
 }
 
 
@@ -1164,7 +1171,8 @@ footer {
 @media (max-width: 700px) {
   .checkout-screen-card { padding: 20px; max-width: 100%; }
   .checkout-contract-scrollbox { max-height: 140px; }
-  .simple-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .genre-row-scroll { gap: 12px; }
+  .genre-row-scroll .cloud-card { flex-basis: 150px; }
   .galaxy-wrap { height: 520px; margin: 16px 4vw 60px; }
   .cloud-card { width: 150px; }
 }

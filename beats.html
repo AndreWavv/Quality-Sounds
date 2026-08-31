@@ -139,7 +139,9 @@
 
   <div class="galaxy-wrap" data-lenis-prevent data-theme="day" id="cloud-scene-wrap">
     <div class="cloud-sky"></div>
-    <div class="cloud-procedural" id="cloud-procedural"></div>
+    <svg class="cloud-silhouette" viewBox="0 0 1600 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0,280 C40,220 100,150 180,150 C240,150 260,200 290,230 C310,180 380,90 460,90 C540,90 570,160 590,210 C610,170 650,120 700,120 C750,120 780,160 800,200 C850,140 920,70 1000,70 C1080,70 1120,150 1140,210 C1160,160 1220,100 1290,100 C1360,100 1400,170 1420,220 C1460,180 1520,140 1580,150 L1600,280 L1600,400 L0,400 Z" />
+    </svg>
     <div class="cloud-stars" id="cloud-stars"></div>
     <div class="cloud-sunbeams"></div>
     <div class="cloud-grain"></div>
@@ -225,8 +227,8 @@
 
 <section class="simple-grid-section">
   <div class="section-label">Browse the Catalog</div>
-  <p class="meta" style="max-width: 500px; margin-bottom: 30px;">Every beat, laid out plainly — cover, price, and a straightforward way to buy.</p>
-  <div class="simple-grid" id="simple-grid"><p class="meta">Loading beats...</p></div>
+  <p class="meta" style="max-width: 500px; margin-bottom: 30px;">Every beat, organized by genre — cover, price, and a straightforward way to buy.</p>
+  <div id="simple-grid-genres"><p class="meta">Loading beats...</p></div>
 </section>
 
 

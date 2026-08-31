@@ -89,7 +89,7 @@
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 500);
-  camera.position.set(0, 140, 560);
+  camera.position.set(0, 220, 900);
 
   // CSS3DRenderer — renders real DOM elements positioned in 3D space,
   // not WebGL meshes. This is the actual fix for "the buy button was
@@ -106,7 +106,7 @@
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.minDistance = 60;
-  controls.maxDistance = 780;
+  controls.maxDistance = 1300;
   controls.target.set(0, 0, 0);
 
   // Custom damped zoom (OrbitControls' own wheel-zoom applies each tick
@@ -287,7 +287,7 @@
     });
 
     const obj = new THREE.CSS3DObject(el);
-    obj.scale.setScalar(0.48); // ring cards specifically — reported as far too large/zoomed-in feeling; scaling the CSS3DObject itself leaves .cloud-card's own size (and the simple grid, which isn't a CSS3DObject at all) untouched
+    obj.scale.setScalar(0.2); // still reported as far too large at 0.48 — going significantly smaller this time rather than incrementing again
     scene.add(obj);
 
     const tiltZ = (Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 8) * (Math.PI / 180);
@@ -698,18 +698,27 @@ By typing your name below and checking the agreement box, you are electronically
       });
     });
 
-    // Simple grid section — same card design, plain in-flow DOM,
-    // normal page scroll, no 3D at all. This is deliberately the
-    // reliable fallback path to actually complete a purchase.
-    const simpleGrid = document.getElementById('simple-grid');
-    if (simpleGrid) {
+    // Simple grid section — organized into one row per genre (mirrors
+    // the rings above, one ring per genre), each its own horizontal
+    // scroll box rather than one flat list — keeps the page from
+    // growing unbounded once there are 25+ beats in the catalog.
+    const simpleGridGenres = document.getElementById('simple-grid-genres');
+    if (simpleGridGenres) {
       if (!BEATS.length) {
-        simpleGrid.innerHTML = '<p class="meta">No beats in the catalog yet — check back soon.</p>';
+        simpleGridGenres.innerHTML = '<p class="meta">No beats in the catalog yet — check back soon.</p>';
       } else {
-        simpleGrid.innerHTML = '';
-        BEATS.forEach((beat) => {
-          const genreObj = GENRES.find((g) => g.id === beat.genre);
-          simpleGrid.appendChild(buildCloudCard(beat, genreObj ? genreObj.name : beat.genre));
+        simpleGridGenres.innerHTML = '';
+        GENRES.forEach((genre) => {
+          const genreBeats = BEATS.filter((b) => b.genre === genre.id);
+          if (!genreBeats.length) return; // skip empty genres entirely rather than showing an empty row
+          const section = document.createElement('div');
+          section.className = 'genre-row-section';
+          section.innerHTML = `<h5 class="genre-row-heading">${genre.name}</h5><div class="genre-row-scroll"></div>`;
+          const scrollRow = section.querySelector('.genre-row-scroll');
+          genreBeats.forEach((beat) => {
+            scrollRow.appendChild(buildCloudCard(beat, genre.name));
+          });
+          simpleGridGenres.appendChild(section);
         });
       }
     }
