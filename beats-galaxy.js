@@ -181,15 +181,69 @@
   }
 
   // ===== Cards (CSS3DObject wrapping real DOM elements) =====
-  // Positions are a loose scatter, not the old solar-system layout —
-  // genre no longer determines placement at all, only which cards are
-  // currently visible (see activateGenre below).
-  const cardObjects = []; // { obj, beat, genre, tiltZ }
+  // ===== Genre rings =====
+  // Not a scattered field to fly through anymore — one contained
+  // composition of rings, one per genre, cycling through three fixed
+  // orientations (horizontal/vertical/diagonal) for visual variety.
+  // Each ring auto-rotates on its own axis; pressing and holding on any
+  // card in a ring pauses that ring and lets you scrub it left/right to
+  // find a specific beat, without affecting the other rings or the
+  // overall camera. The free camera drag (rotate the whole view) still
+  // works exactly as before — see the stopPropagation() call below for
+  // how the two interactions stay independent of each other.
+  const RING_ORIENTATIONS = ['horizontal', 'vertical', 'diagonal'];
+  const RING_TILT = Math.PI / 4;
+  const RING_LAYOUT_RADIUS = 150;
 
-  function addCardForBeat(beat, index, total) {
-    const genre = GENRES.find((g) => g.id === beat.genre);
-    const genreColorCss = genre ? hexToCss(genre.color) : '';
-    const genreLabel = genre ? genre.name : beat.genre;
+  const rings = GENRES.map((genre, i) => {
+    const orientation = RING_ORIENTATIONS[i % RING_ORIENTATIONS.length];
+    const layoutAngle = (i / GENRES.length) * Math.PI * 2;
+    return {
+      id: genre.id,
+      name: genre.name,
+      orientation,
+      center: {
+        x: Math.cos(layoutAngle) * RING_LAYOUT_RADIUS,
+        y: (i % 2 === 0 ? 1 : -1) * 12, // slight height stagger so rings read as distinct, not stacked flat
+        z: Math.sin(layoutAngle) * RING_LAYOUT_RADIUS,
+      },
+      radius: 45,
+      angle: Math.random() * Math.PI * 2, // staggered starting position — avoids every ring looking synchronized
+      autoSpeed: 0.05 + Math.random() * 0.035,
+      paused: false,
+      cards: [], // { obj, beat, angleOffset, tiltZ }
+    };
+  });
+
+  function ringLocalOffset(ring, angleOffset) {
+    const a = ring.angle + angleOffset;
+    if (ring.orientation === 'horizontal') {
+      return { x: Math.cos(a) * ring.radius, y: 0, z: Math.sin(a) * ring.radius };
+    }
+    if (ring.orientation === 'vertical') {
+      return { x: Math.cos(a) * ring.radius, y: Math.sin(a) * ring.radius, z: 0 };
+    }
+    // diagonal — same parametric circle as vertical, with the plane
+    // itself tilted 45 degrees toward the Z axis
+    return {
+      x: Math.cos(a) * ring.radius,
+      y: Math.sin(a) * ring.radius * Math.cos(RING_TILT),
+      z: Math.sin(a) * ring.radius * Math.sin(RING_TILT),
+    };
+  }
+
+  // Pause+scrub state — global (not per-ring) since only one ring can
+  // be actively dragged at a time.
+  let activeDragRing = null;
+  let ringDragStartX = 0;
+  let ringDragStartAngle = 0;
+
+  // Shared by both the rings AND the simple grid section further down
+  // the page — one definition of what a card looks like, so there's no
+  // risk of the two silently diverging over time.
+  function buildCloudCard(beat, genreLabel) {
+    const genreObj = GENRES.find((g) => g.id === beat.genre);
+    const genreColorCss = genreObj ? hexToCss(genreObj.color) : '';
 
     const el = document.createElement('div');
     el.className = 'cloud-card';
@@ -206,32 +260,52 @@
     el.querySelector('.cloud-card-buy').addEventListener('click', () => showBeatInfo(beat));
     const cardPlayBtn = el.querySelector('.cloud-card-playbtn');
     if (cardPlayBtn && window.qsWireBeatPlayButton) window.qsWireBeatPlayButton(cardPlayBtn);
+    return el;
+  }
+
+  function addCardForBeat(beat, ring) {
+    const el = buildCloudCard(beat, ring.name);
+
+    // Ring pause+scrub — stopPropagation prevents this same pointerdown
+    // from also bubbling up to the renderer.domElement listener that
+    // drives the free camera drag, so pressing on a card scrubs its
+    // ring instead of also spinning the whole scene at the same time.
+    // engage() is called directly here (not relying on that same
+    // bubbling) so the "click to engage" hint and zoom still activate
+    // correctly even if someone's very first click lands on a card
+    // rather than empty space.
+    el.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      engage();
+      activeDragRing = ring;
+      ring.paused = true;
+      ringDragStartX = e.clientX;
+      ringDragStartAngle = ring.angle;
+    });
 
     const obj = new THREE.CSS3DObject(el);
-
-    const angle = (index / Math.max(total, 1)) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-    const radius = 55 + Math.random() * 60;
-    const heightSpread = (Math.random() - 0.5) * 75;
-    obj.position.set(Math.cos(angle) * radius, heightSpread, Math.sin(angle) * radius);
-
-    // Fixed tilt for visual variety (per spec: ~14deg on outer cards),
-    // applied as a local Z rotation on top of billboarding, which is
-    // recomputed every frame in animate() so the card (and its buy
-    // button) always faces the camera regardless of where it's dragged.
-    const distFromCenter = Math.sqrt(obj.position.x ** 2 + obj.position.z ** 2);
-    const tiltFactor = Math.min(1, distFromCenter / 110);
-    const tiltZ = (Math.random() < 0.5 ? -1 : 1) * tiltFactor * (14 * Math.PI / 180);
-
     scene.add(obj);
-    cardObjects.push({ obj, beat, genre: beat.genre, tiltZ });
+
+    const tiltZ = (Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 8) * (Math.PI / 180);
+    ring.cards.push({ obj, beat, angleOffset: 0, tiltZ });
     return obj;
   }
 
+  window.addEventListener('pointermove', (e) => {
+    if (!activeDragRing) return;
+    const dx = e.clientX - ringDragStartX;
+    activeDragRing.angle = ringDragStartAngle + dx * 0.012;
+  });
+  window.addEventListener('pointerup', () => {
+    // Deliberately stays paused wherever it's released, per spec — the
+    // whole point of scrubbing is landing on a specific beat, and
+    // resuming auto-rotation immediately would undo that.
+    activeDragRing = null;
+  });
+
   // ===== Genre filtering =====
-  // No more camera-warping to a "sun" — there isn't one anymore. The
-  // camera stays exactly where the visitor left it; picking a genre
-  // just shows/hides matching cards. Free drag/zoom/orbit is completely
-  // unaffected either way, matching the "same feel" requirement.
+  // Each genre already maps to exactly one ring, so filtering is just
+  // showing/hiding whole rings — no separate lookup needed.
   let activeGenreId = 'all';
 
   function activateGenre(id) {
@@ -241,9 +315,9 @@
     triggerFlash();
     activeGenreId = id;
 
-    cardObjects.forEach(({ obj, genre }) => {
-      const show = id === 'all' || genre === id;
-      obj.element.style.display = show ? '' : 'none';
+    rings.forEach((ring) => {
+      const show = id === 'all' || ring.id === id;
+      ring.cards.forEach(({ obj }) => { obj.element.style.display = show ? '' : 'none'; });
     });
 
     const emptyHint = document.getElementById('galaxy-empty-hint');
@@ -251,10 +325,9 @@
       if (id === 'all') {
         emptyHint.classList.remove('visible');
       } else {
-        const genreObj = GENRES.find((g) => g.id === id);
-        const hasBeats = cardObjects.some((c) => c.genre === id);
-        emptyHint.textContent = `No ${genreObj ? genreObj.name : id} beats in the catalog yet — check back soon.`;
-        emptyHint.classList.toggle('visible', !hasBeats);
+        const ring = rings.find((r) => r.id === id);
+        emptyHint.textContent = `No ${ring ? ring.name : id} beats in the catalog yet — check back soon.`;
+        emptyHint.classList.toggle('visible', !ring || ring.cards.length === 0);
       }
     }
   }
@@ -607,19 +680,36 @@ By typing your name below and checking the agreement box, you are electronically
         coverArtUrl: row.cover_art_url || '',
       };
       BEATS.push(beat);
-      const existingIndex = BEATS.length - 1;
-      addCardForBeat(beat, existingIndex, existingIndex + 1); // total gets refined below once all rows are in
+      const ring = rings.find((r) => r.id === beat.genre);
+      if (ring) addCardForBeat(beat, ring);
     });
-    // Re-space cards now that the real total count is known — the
-    // index/total passed above during the loop was only a running
-    // count, not the final total, which affects how evenly the angle
-    // step divides the circle.
-    cardObjects.forEach(({ obj }, i) => {
-      const angle = (i / Math.max(cardObjects.length, 1)) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-      const radius = 55 + Math.random() * 60;
-      obj.position.x = Math.cos(angle) * radius;
-      obj.position.z = Math.sin(angle) * radius;
+    // Now that every ring's real card count is known, size each ring
+    // to fit its cards comfortably and space them evenly around it —
+    // during the loop above every card was pushed with angleOffset 0,
+    // since the final count per ring wasn't known yet.
+    rings.forEach((ring) => {
+      if (!ring.cards.length) return;
+      ring.radius = Math.max(40, Math.min(115, 25 + ring.cards.length * 15));
+      ring.cards.forEach((card, i) => {
+        card.angleOffset = (i / ring.cards.length) * Math.PI * 2;
+      });
     });
+
+    // Simple grid section — same card design, plain in-flow DOM,
+    // normal page scroll, no 3D at all. This is deliberately the
+    // reliable fallback path to actually complete a purchase.
+    const simpleGrid = document.getElementById('simple-grid');
+    if (simpleGrid) {
+      if (!BEATS.length) {
+        simpleGrid.innerHTML = '<p class="meta">No beats in the catalog yet — check back soon.</p>';
+      } else {
+        simpleGrid.innerHTML = '';
+        BEATS.forEach((beat) => {
+          const genreObj = GENRES.find((g) => g.id === beat.genre);
+          simpleGrid.appendChild(buildCloudCard(beat, genreObj ? genreObj.name : beat.genre));
+        });
+      }
+    }
     // script.js (a separate closure) drives the floating player's
     // prev/next/shuffle controls and needs a flat, navigable list —
     // it can't reach into this IIFE's own BEATS array directly.
@@ -713,14 +803,23 @@ By typing your name below and checking the agreement box, you are electronically
 
     controls.update();
 
-    // Billboard every card toward the camera, then apply its fixed
-    // tilt on top — this is what keeps the buy button facing the
-    // viewer no matter how the camera's been dragged around, per spec.
-    // Vertical float drift is handled by the .cloud-card CSS animation
-    // directly on the real DOM element, not here.
-    cardObjects.forEach(({ obj, tiltZ }) => {
-      obj.quaternion.copy(camera.quaternion);
-      obj.rotateZ(tiltZ);
+    // Advance each ring's rotation (unless paused mid-scrub), then
+    // reposition its cards along the ring and billboard each toward
+    // the camera with its fixed tilt applied on top — this is what
+    // keeps the buy button facing the viewer regardless of the ring's
+    // rotation or how the camera's been dragged around. Vertical float
+    // drift is handled by the .cloud-card CSS animation directly on
+    // the real DOM element, not here.
+    rings.forEach((ring) => {
+      if (!ring.paused) {
+        ring.angle += ring.autoSpeed * delta;
+      }
+      ring.cards.forEach(({ obj, angleOffset, tiltZ }) => {
+        const local = ringLocalOffset(ring, angleOffset);
+        obj.position.set(ring.center.x + local.x, ring.center.y + local.y, ring.center.z + local.z);
+        obj.quaternion.copy(camera.quaternion);
+        obj.rotateZ(tiltZ);
+      });
     });
 
     renderer.render(scene, camera);

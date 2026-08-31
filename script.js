@@ -577,6 +577,12 @@ setupTilt('.tier', -6, 5);
 // actual containing block via position:absolute inside the cube's
 // expanded face) — not .nav-links, a different element offset by
 // padding, which was the exact bug from an earlier round.
+//
+// Visibility is now explicitly tied to the dock actually being open
+// (nav hover) — previously moveTubelightTo() added the .visible class
+// unconditionally on page load via initPosition(), regardless of
+// whether the dock was expanded at all, which is exactly why the
+// light appeared floating before the dock was even open.
 (function () {
   const nav = document.getElementById('site-nav');
   const tubelight = document.getElementById('nav-tubelight');
@@ -585,21 +591,30 @@ setupTilt('.tier', -6, 5);
   const items = Array.from(nav.querySelectorAll('.nav-item'));
   const activeItem = nav.querySelector('.nav-item.active') || items[0];
 
-  function moveTubelightTo(item) {
+  function positionTubelightOn(item) {
     if (!item) return;
     const itemRect = item.getBoundingClientRect();
     const navRect = nav.getBoundingClientRect();
     tubelight.style.left = `${itemRect.left - navRect.left}px`;
     tubelight.style.width = `${itemRect.width}px`;
-    tubelight.classList.add('visible');
   }
 
   items.forEach((item) => {
-    item.addEventListener('mouseenter', () => moveTubelightTo(item));
+    item.addEventListener('mouseenter', () => positionTubelightOn(item));
   });
-  nav.addEventListener('mouseleave', () => moveTubelightTo(activeItem));
 
-  function initPosition() { moveTubelightTo(activeItem); }
+  nav.addEventListener('mouseenter', () => {
+    positionTubelightOn(activeItem);
+    tubelight.classList.add('visible');
+  });
+  nav.addEventListener('mouseleave', () => {
+    tubelight.classList.remove('visible');
+  });
+
+  // Position-only on load/resize — deliberately does NOT touch the
+  // .visible class, so it's ready to appear instantly the first time
+  // the dock opens instead of popping into the wrong spot.
+  function initPosition() { positionTubelightOn(activeItem); }
   requestAnimationFrame(initPosition);
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(initPosition);
