@@ -611,6 +611,30 @@ setupTilt('.tier', -6, 5);
     tubelight.classList.remove('visible');
   });
 
+  // Touch devices don't have a meaningful :hover state, so without an
+  // explicit tap-to-toggle the dock would be effectively unopenable on
+  // mobile — the trigger is visible but nothing would ever reveal the
+  // nav items underneath it.
+  const navTrigger = nav.querySelector('.nav-trigger');
+  if (navTrigger) {
+    navTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = nav.classList.toggle('nav-open');
+      if (isOpen) {
+        positionTubelightOn(activeItem);
+        tubelight.classList.add('visible');
+      } else {
+        tubelight.classList.remove('visible');
+      }
+    });
+  }
+  document.addEventListener('click', (e) => {
+    if (nav.classList.contains('nav-open') && !nav.contains(e.target)) {
+      nav.classList.remove('nav-open');
+      tubelight.classList.remove('visible');
+    }
+  });
+
   // Position-only on load/resize — deliberately does NOT touch the
   // .visible class, so it's ready to appear instantly the first time
   // the dock opens instead of popping into the wrong spot.

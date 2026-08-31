@@ -151,7 +151,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--white);
   transition: opacity 0.25s ease;
 }
-.nav:hover .nav-trigger {
+.nav:hover .nav-trigger, .nav.nav-open .nav-trigger {
   opacity: 0;
 }
 .nav-trigger svg { width: 20px; height: 20px; }
@@ -182,7 +182,7 @@ a { color: inherit; text-decoration: none; }
   transition: opacity 0.3s ease;
   white-space: nowrap;
 }
-.nav:hover .nav-links {
+.nav:hover .nav-links, .nav.nav-open .nav-links {
   opacity: 1;
   pointer-events: auto;
 }
@@ -196,7 +196,7 @@ a { color: inherit; text-decoration: none; }
   display: block;
   transform: translateX(var(--spread, 0));
 }
-.nav:hover .nav-item {
+.nav:hover .nav-item, .nav.nav-open .nav-item {
   transform: translateX(0);
 }
 .nav-item:hover, .nav-item.active {
@@ -873,16 +873,16 @@ footer {
   z-index: 1;
   background:
     radial-gradient(ellipse 45% 26% at 20% 72%, var(--cloud-light-glow) 0%, transparent 70%),
-    radial-gradient(ellipse 55% 30% at 78% 50%, rgba(255,255,255,0.11) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 22% at 48% 88%, rgba(255,255,255,0.15) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 35% at 88% 18%, rgba(255,255,255,0.07) 0%, transparent 70%),
-    radial-gradient(ellipse 38% 20% at 8% 30%, rgba(255,255,255,0.09) 0%, transparent 70%);
-  filter: blur(50px);
+    radial-gradient(ellipse 55% 30% at 78% 50%, rgba(255,255,255,0.32) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 22% at 48% 88%, rgba(255,255,255,0.40) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 35% at 88% 18%, rgba(255,255,255,0.22) 0%, transparent 70%),
+    radial-gradient(ellipse 38% 20% at 8% 30%, rgba(255,255,255,0.28) 0%, transparent 70%);
+  filter: blur(30px);
   animation: cloud-drift 70s ease-in-out infinite alternate;
 }
 .galaxy-wrap[data-theme="night"] .cloud-procedural {
-  opacity: 0.5;
-  filter: blur(55px) brightness(0.65);
+  opacity: 0.6;
+  filter: blur(32px) brightness(0.8);
 }
 @keyframes cloud-drift {
   0% { transform: translate(0%, 0%) scale(1); }
@@ -949,7 +949,7 @@ footer {
 /* CSS3DRenderer output mounts here — sits above all the atmospheric
    layers, below the licensing panel/hints (which use their own
    z-index further down in this file). */
-#galaxy-viewport { position: absolute; inset: 0; z-index: 5; }
+#galaxy-viewport { position: absolute; inset: 0; z-index: 5; touch-action: none; }
 
 /* ---- Cards (CSS3DRenderer — real DOM elements, not raycast targets:
    the actual fix for "the buy button was unreliable to click") ---- */
@@ -980,6 +980,21 @@ footer {
   overflow: hidden;
   background: linear-gradient(160deg, var(--cloud-secondary), #0a0a0d);
   margin-bottom: 10px;
+}
+.cloud-card-genre-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  background: rgba(10,10,14,0.8);
+  border: 1px solid;
+  border-radius: 100px;
+  padding: 3px 9px;
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .cloud-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cloud-card-cover::after {
@@ -1046,21 +1061,23 @@ footer {
 
 /* ---- Theme toggle (added to the existing dock, per spec) ---- */
 .theme-toggle {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 1px solid var(--hairline);
-  background: rgba(255,255,255,0.06);
+  background: rgba(20, 20, 26, 0.65);
+  backdrop-filter: blur(16px);
   color: var(--white);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: absolute;
-  top: -4px;
-  right: -38px;
+  position: fixed;
+  top: 26px;
+  left: 24px;
+  z-index: 101;
 }
-.theme-toggle svg { width: 15px; height: 15px; }
+.theme-toggle svg { width: 18px; height: 18px; }
 .theme-toggle .theme-icon-moon { display: none; }
 [data-site-theme="night"] .theme-toggle .theme-icon-sun { display: none; }
 [data-site-theme="night"] .theme-toggle .theme-icon-moon { display: block; }
@@ -1142,6 +1159,14 @@ footer {
   white-space: pre-wrap;
   margin: 10px 0;
   padding-right: 8px;
+}
+
+@media (max-width: 700px) {
+  .checkout-screen-card { padding: 20px; max-width: 100%; }
+  .checkout-contract-scrollbox { max-height: 140px; }
+  .simple-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .galaxy-wrap { height: 520px; margin: 16px 4vw 60px; }
+  .cloud-card { width: 150px; }
 }
 
 .beat-info-panel {

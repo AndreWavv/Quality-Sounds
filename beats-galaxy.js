@@ -89,7 +89,7 @@
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 500);
-  camera.position.set(0, 100, 380);
+  camera.position.set(0, 140, 560);
 
   // CSS3DRenderer — renders real DOM elements positioned in 3D space,
   // not WebGL meshes. This is the actual fix for "the buy button was
@@ -106,7 +106,7 @@
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.minDistance = 60;
-  controls.maxDistance = 550;
+  controls.maxDistance = 780;
   controls.target.set(0, 0, 0);
 
   // Custom damped zoom (OrbitControls' own wheel-zoom applies each tick
@@ -248,9 +248,12 @@
     const el = document.createElement('div');
     el.className = 'cloud-card';
     el.innerHTML = `
-      <div class="cloud-card-cover">${beat.coverArtUrl ? `<img src="${beat.coverArtUrl}" alt="">` : ''}</div>
+      <div class="cloud-card-cover">
+        ${beat.coverArtUrl ? `<img src="${beat.coverArtUrl}" alt="">` : ''}
+        <span class="cloud-card-genre-badge" style="border-color: ${genreColorCss || 'var(--cloud-accent)'}; color: ${genreColorCss || 'var(--cloud-accent)'};">${genreLabel}</span>
+      </div>
       <div class="cloud-card-title">${beat.title}</div>
-      <div class="cloud-card-meta">${genreLabel.toUpperCase()} · ${beat.meta}</div>
+      <div class="cloud-card-meta">${beat.meta}</div>
       <div class="cloud-card-row">
         <span class="cloud-card-price">$${beat.licenses.mp3}</span>
         <button type="button" class="cloud-card-playbtn beat-play" data-name="${beat.title}" data-audio-url="${beat.audioUrl || ''}" data-genre-color="${genreColorCss}" data-cover-url="${beat.coverArtUrl || ''}" aria-label="Preview"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg></button>
@@ -284,6 +287,7 @@
     });
 
     const obj = new THREE.CSS3DObject(el);
+    obj.scale.setScalar(0.48); // ring cards specifically — reported as far too large/zoomed-in feeling; scaling the CSS3DObject itself leaves .cloud-card's own size (and the simple grid, which isn't a CSS3DObject at all) untouched
     scene.add(obj);
 
     const tiltZ = (Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 8) * (Math.PI / 180);
