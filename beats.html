@@ -138,10 +138,8 @@
   <p class="galaxy-hint">Drag to look around · Scroll to zoom · Click a card to view licenses</p>
 
   <div class="galaxy-wrap" data-lenis-prevent data-theme="day" id="cloud-scene-wrap">
-    <div class="cloud-sky"></div>
-    <svg class="cloud-silhouette" viewBox="0 0 1600 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M0,280 C40,220 100,150 180,150 C240,150 260,200 290,230 C310,180 380,90 460,90 C540,90 570,160 590,210 C610,170 650,120 700,120 C750,120 780,160 800,200 C850,140 920,70 1000,70 C1080,70 1120,150 1140,210 C1160,160 1220,100 1290,100 C1360,100 1400,170 1420,220 C1460,180 1520,140 1580,150 L1600,280 L1600,400 L0,400 Z" />
-    </svg>
+    <video class="cloud-video" id="cloud-video-day" autoplay loop muted playsinline src="clouds-day.mp4"></video>
+    <video class="cloud-video cloud-video-night" id="cloud-video-night" autoplay loop muted playsinline src="clouds-night.mp4"></video>
     <div class="cloud-stars" id="cloud-stars"></div>
     <div class="cloud-sunbeams"></div>
     <div class="cloud-grain"></div>
@@ -357,7 +355,7 @@
 <script src="nebula-bg.js"></script>
 <script src="waveform.js"></script>
 <script src="script.js"></script>
-<script src="beats-galaxy.js"></script>
 <script src="parallax.js"></script>
+<script src="beats-galaxy.js"></script>
 </body>
 </html>

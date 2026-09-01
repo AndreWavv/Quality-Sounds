@@ -41,8 +41,8 @@ html { scroll-behavior: smooth; }
    didn't work out, so this page now scrolls normally. */
 
 body {
-  background: linear-gradient(180deg, #C4C4CA 0%, #A9A9B1 45%, #8C8C95 100%);
-  color: #17171A;
+  background: linear-gradient(180deg, #02013A 0%, #040273 45%, #0A08A8 100%);
+  color: var(--white);
   font-family: var(--body);
   font-size: 16px;
   line-height: 1.6;
@@ -378,7 +378,7 @@ a { color: inherit; text-decoration: none; }
   z-index: 1;
   max-width: 18ch;
   animation: float-title 6s ease-in-out infinite;
-  text-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 0 70px rgba(134,166,255,0.35), 0 0 110px rgba(157,92,255,0.22);
+  text-shadow: 0 0 50px rgba(255,255,255,0.3), 0 0 100px rgba(134,166,255,0.5), 0 0 160px rgba(157,92,255,0.35);
 }
 
 @keyframes float-title {
@@ -856,37 +856,34 @@ footer {
   --cloud-buy-text: #0A0850;
 }
 
-/* Procedural clouds — soft, blurred, drifting gradient shapes rather
-   than stock video footage. Same underlying technique as the hero's
-   .blob elements (large blurred gradient shapes), scaled up and tuned
-   for an atmospheric cloud feel instead of a decorative accent. */
-.cloud-sky {
+/* Videos are wide, distant landscape shots — cropped/scaled tighter so
+   it reads as "inside the atmosphere" rather than "photo behind cards".
+   object-position targets the cloud-sea/sun region on the day clip and
+   the starfield/Milky Way region on the night clip, avoiding the sharp
+   mountain silhouettes in both, which read as distant landscape rather
+   than immersive atmosphere. */
+.cloud-video {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 65% 35%;
+  transform: scale(1.3);
   z-index: 0;
-  background: linear-gradient(160deg, var(--cloud-sky-1), var(--cloud-sky-2), var(--cloud-sky-3));
+  opacity: 1;
+  transition: opacity 1.4s ease;
 }
-
-.cloud-silhouette {
-  position: absolute;
-  left: -10%;
-  right: -10%;
-  bottom: 0;
-  width: 120%;
-  height: 42%;
-  z-index: 1;
-  animation: cloud-drift 90s linear infinite alternate;
+.cloud-video-night {
+  object-position: 40% 15%;
+  transform: scale(1.25);
+  opacity: 0;
 }
-.cloud-silhouette path {
-  fill: var(--cloud-sky-1);
-  transition: fill 1s ease;
-}
-@keyframes cloud-drift {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-4%); }
-}
+.galaxy-wrap[data-theme="night"] .cloud-video:not(.cloud-video-night) { opacity: 0; }
+.galaxy-wrap[data-theme="night"] .cloud-video-night { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
-  .cloud-silhouette { animation: none; }
+  .cloud-video { display: none; }
+  .galaxy-wrap { background: linear-gradient(160deg, var(--cloud-sky-1), var(--cloud-sky-2), var(--cloud-sky-3)); }
 }
 
 .cloud-stars {

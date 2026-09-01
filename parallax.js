@@ -16,6 +16,15 @@
     anchors: true, // site already has #section links (License button, Contact nav link) — let Lenis own those too, rather than risking its internal scroll position desyncing from a native anchor jump
   });
 
+  // Lenis measures the page's scrollable height once, here, at init.
+  // Content that loads asynchronously afterward (the beats/rings/
+  // filter-tabs, fetched from Supabase) changes the actual page height
+  // well after this point — without an explicit re-measure, Lenis
+  // keeps capping scroll at its original, stale, shorter height. This
+  // is what beats-galaxy.js calls once its async content finishes
+  // populating the DOM.
+  window.qsLenisResize = () => lenis.resize();
+
   if (typeof ScrollTrigger !== 'undefined') {
     gsap.registerPlugin(ScrollTrigger);
     lenis.on('scroll', ScrollTrigger.update);

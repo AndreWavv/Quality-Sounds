@@ -753,6 +753,11 @@ By typing your name below and checking the agreement box, you are electronically
         genreColor: g ? hexToCss(g.color) : '',
       };
     });
+
+    // This content just changed the page's real scrollable height —
+    // Lenis measured it once at init, before any of this existed, and
+    // has no way to know it needs to re-measure on its own.
+    if (window.qsLenisResize) window.qsLenisResize();
   }
   loadBeatsFromSupabase();
 
