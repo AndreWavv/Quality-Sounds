@@ -4,8 +4,49 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Beats — Quality Sounds</title>
-<meta name="description" content="Browse and license beats produced by Andre.Wav.">
+<meta name="description" content="Browse and license beats produced by Andre.Wavv.">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="cloud-bg.css">
+<style>
+  /* Genre rings: each filter pill gets a dot in its ring's color, so the
+     pills double as the color key for the rings in the scene. */
+  .galaxy-section .pill[data-genre]:not([data-genre="all"])::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: 1px;
+    background: var(--ring-color);
+    box-shadow: 0 0 8px var(--ring-color);
+  }
+  .galaxy-engage-hint { white-space: nowrap; }
+  /* Performance: cards riding the rings skip the frosted-glass blur. Blurring
+     15 cards over a moving video and glow every frame is very expensive and
+     was slowing the whole page. A more solid card looks the same at this size. */
+  #galaxy-viewport .cloud-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: rgba(10, 10, 14, 0.9);
+  }
+  /* Shown in the scene only if the 3D library can't load. */
+  .galaxy-scene-message {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 6;
+    margin: 0;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--white);
+    pointer-events: none;
+  }
+</style>
 </head>
 <body>
 
@@ -120,29 +161,29 @@
   <div class="blob blob-blue" style="width:300px;height:300px;top:20%;right:10%;"></div>
   <div class="hero-eyebrow">Catalog</div>
   <h1>Beats</h1>
-  <p>Every beat below is available to preview and license instantly. Replace this list with your own catalog — each card is one track.</p>
+  <p>Every beat below is available to preview and license instantly.</p>
 </header>
 
 <section class="galaxy-section">
   <div class="filters">
-    <button class="pill active" data-genre="all">All Systems</button>
-    <button class="pill" data-genre="trap">Trap</button>
-    <button class="pill" data-genre="rnb">R&amp;B</button>
-    <button class="pill" data-genre="indie-pop">Indie Pop</button>
-    <button class="pill" data-genre="2000s-swag">2000's Swag</button>
-    <button class="pill" data-genre="cinematic">Cinematic</button>
-    <button class="pill" data-genre="house">House</button>
-    <button class="pill" data-genre="synthwave">Synthwave</button>
+    <button class="pill active" data-genre="all">All Genres</button>
+    <button class="pill" data-genre="trap" style="--ring-color: #FF6B6B;">Trap</button>
+    <button class="pill" data-genre="rnb" style="--ring-color: #9D5CFF;">R&amp;B</button>
+    <button class="pill" data-genre="indie-pop" style="--ring-color: #6BFFB8;">Indie Pop</button>
+    <button class="pill" data-genre="2000s-swag" style="--ring-color: #FFE66B;">2000's Swag</button>
+    <button class="pill" data-genre="cinematic" style="--ring-color: #6B9BFF;">Cinematic</button>
+    <button class="pill" data-genre="house" style="--ring-color: #FF6BD6;">House</button>
+    <button class="pill" data-genre="synthwave" style="--ring-color: #00E5FF;">Synthwave</button>
   </div>
 
-  <p class="galaxy-hint">Drag to look around · Scroll to zoom · Click a card to view licenses</p>
+  <p class="galaxy-hint" id="galaxy-hint">Drag to look around · Scroll to zoom · Hold a card to pause and scrub its ring</p>
 
   <div class="galaxy-wrap" data-lenis-prevent data-theme="day" id="cloud-scene-wrap">
-    <video class="cloud-video" id="cloud-video-day" autoplay loop muted playsinline src="clouds-day.mp4"></video>
-    <video class="cloud-video cloud-video-night" id="cloud-video-night" autoplay loop muted playsinline src="clouds-night.mp4"></video>
-    <div class="cloud-stars" id="cloud-stars"></div>
-    <div class="cloud-sunbeams"></div>
-    <div class="cloud-grain"></div>
+    <!-- Sea-of-clouds background. Sources are attached by cloud-bg.js
+         (720p on phones, 1080p on bigger screens); the poster shows until
+         the clip starts, and stays up for reduced-motion visitors. -->
+    <video class="cloud-video" id="cloud-video-day" loop muted playsinline preload="none" poster="clouds-day.jpg" data-src="clouds-day.mp4" data-src-mobile="clouds-day-720.mp4"></video>
+    <video class="cloud-video cloud-video-night" id="cloud-video-night" loop muted playsinline preload="none" poster="clouds-night.jpg" data-src="clouds-night.mp4" data-src-mobile="clouds-night-720.mp4"></video>
     <div class="cloud-vignette"></div>
     <div id="galaxy-viewport" class="galaxy-viewport"></div>
     <div class="galaxy-flash" id="galaxy-flash"></div>
@@ -345,9 +386,13 @@
 <script src="supabase-client.js"></script>
 <script src="auth.js" defer></script>
 <script src="library.js" defer></script>
+<!-- three.js + CSS3DRenderer, each with a backup CDN in case the first
+     one is blocked or down (that's what caused the grey screen on a
+     phone during the rings preview). -->
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>window.THREE || document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"><\/script>');</script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
+<script>(window.THREE && THREE.CSS3DRenderer) || document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"><\/script>');</script>
 <link rel="stylesheet" href="https://unpkg.com/lenis@1.3.25/dist/lenis.css">
 <script src="https://unpkg.com/lenis@1.3.25/dist/lenis.min.js"></script>
 <script src="https://unpkg.com/gsap@3.13.0/dist/gsap.min.js"></script>
@@ -357,5 +402,6 @@
 <script src="script.js"></script>
 <script src="parallax.js"></script>
 <script src="beats-galaxy.js"></script>
+<script src="cloud-bg.js"></script>
 </body>
 </html>

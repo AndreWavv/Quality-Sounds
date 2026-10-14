@@ -1,0 +1,36 @@
+/* ===== Beats page: sea-of-clouds background (day + night) =====
+   Loaded AFTER styles.css on beats.html only. Everything is scoped to
+   #cloud-scene-wrap, so it wins over the older .cloud-video rules in
+   styles.css without editing that file.
+
+   The two clips are the same shot, frame-matched (19.2 s loop each):
+   day   = the original twilight footage
+   night = the same footage with a darker, cooler grade
+   cloud-bg.js plays only the visible one and keeps them on the same
+   frame, so the day/night toggle crossfades like the light changing. */
+
+/* Same framing for both clips (the old rules cropped each one
+   differently, which would break the frame-matched crossfade). The peak
+   sits a little left of center and the horizon a little below the
+   middle, so 50% / 58% keeps both in view on wide and tall screens. */
+#cloud-scene-wrap .cloud-video,
+#cloud-scene-wrap .cloud-video-night {
+  object-fit: cover;
+  object-position: 50% 58%;
+  transform: none;
+  transition: opacity 1.4s ease;
+  background: #05060b; /* shown for a split second before the poster image loads */
+}
+
+/* Reduced motion: styles.css hides the videos entirely. Show them
+   instead: cloud-bg.js doesn't start playback for these visitors, so
+   they see the still poster frame rather than an empty box. */
+@media (prefers-reduced-motion: reduce) {
+  #cloud-scene-wrap .cloud-video { display: block; }
+}
+
+/* Lighter vignette than before: the footage already has dark edges,
+   and the old one hid the cloud sea at the bottom. */
+#cloud-scene-wrap .cloud-vignette {
+  background: linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.45) 100%);
+}
