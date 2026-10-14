@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Account — Quality Sounds</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* Four tabs fit on a phone: tighten the pill buttons a little there. */
+  @media (max-width: 480px) {
+    #account-content .auth-tab { padding: 10px 4px; font-size: 0.68rem; letter-spacing: 0; }
+  }
+
+  /* ===== Purchases ===== */
+  .purchase-card {
+    padding: 18px;
+    margin-bottom: 14px;
+    border-radius: 16px;
+    border: 1px solid var(--hairline);
+    background: linear-gradient(160deg, rgba(29,30,38,0.9), rgba(21,21,27,0.95));
+  }
+  .purchase-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .purchase-top > div { min-width: 0; }
+  .purchase-title {
+    font-family: var(--display);
+    text-transform: uppercase;
+    font-size: 1.15rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .purchase-meta { font-family: var(--mono); font-size: 0.72rem; color: var(--grey); margin-top: 4px; }
+  .purchase-badge {
+    flex-shrink: 0;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 100px;
+    border: 1px solid var(--hairline);
+    color: var(--grey);
+  }
+  .purchase-badge.active { border-color: rgba(107,255,184,0.5); color: #6BFFB8; }
+  .purchase-badge.pending { border-color: rgba(255,230,107,0.5); color: #FFE66B; }
+  .purchase-badge.expired { border-color: rgba(255,107,107,0.5); color: #FF6B6B; }
+  .purchase-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .purchase-actions .btn { padding: 11px 18px; font-size: 0.7rem; }
+  .purchase-files { margin-top: 14px; display: grid; gap: 8px; }
+  .purchase-file-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+  }
+  .purchase-file-row .label { font-family: var(--mono); font-size: 0.78rem; }
+  .purchase-file-row .btn { padding: 9px 14px; font-size: 0.66rem; }
+  .purchase-note { font-family: var(--mono); font-size: 0.68rem; color: var(--grey); }
+  .purchase-license {
+    margin-top: 14px;
+    max-height: 260px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    line-height: 1.6;
+    color: var(--grey);
+    padding: 14px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--hairline);
+  }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="admin-back-link">← Back to Site</a>
+
+<header class="page-head">
+  <div class="hero-eyebrow">Account</div>
+  <h1>My Library</h1>
+  <p>Your purchases, favorites and playlists.</p>
+</header>
+
+<section class="form-section" style="padding-top: 0; max-width: 720px;">
+
+  <div id="account-signed-out" style="text-align:center; display:none;">
+    <p class="meta">Sign in from the <a href="beats.html" style="text-decoration: underline;">main site</a> to see your account and download your purchases.</p>
+  </div>
+
+  <div id="account-loading" style="text-align:center;">
+    <p class="meta">Loading...</p>
+  </div>
+
+  <div id="account-content" style="display:none;">
+    <div class="auth-tabs">
+      <button type="button" id="account-tab-profile" class="auth-tab active">Profile</button>
+      <button type="button" id="account-tab-purchases" class="auth-tab">Purchases</button>
+      <button type="button" id="account-tab-favorites" class="auth-tab">Favorites</button>
+      <button type="button" id="account-tab-playlists" class="auth-tab">Playlists</button>
+    </div>
+
+    <div id="account-profile-panel">
+      <form id="profile-form">
+        <div class="field">
+          <label for="profile-name">Display Name</label>
+          <input type="text" id="profile-name" placeholder="Your name" autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="profile-email">Email Address</label>
+          <input type="email" id="profile-email" autocomplete="email">
+          <p class="meta" style="margin-top: 6px;">Changing your email sends a confirmation link to the new address — the change only takes effect once you click it.</p>
+        </div>
+        <button type="submit" class="btn solid" style="width:100%; justify-content:center;">Save Changes</button>
+        <p class="meta" id="profile-status" style="margin-top: 10px; display: none;"></p>
+      </form>
+    </div>
+
+    <div id="account-purchases-panel" style="display:none;">
+      <div id="purchases-list"><p class="meta">Loading...</p></div>
+    </div>
+
+    <div id="account-favorites-panel" style="display:none;">
+      <div id="favorites-list"><p class="meta">Loading...</p></div>
+    </div>
+
+    <div id="account-playlists-panel" style="display:none;">
+      <form id="create-playlist-form" style="display:flex; gap:8px; margin-bottom:20px;">
+        <input type="text" id="new-playlist-name" placeholder="New playlist name" style="flex:1;" required>
+        <button type="submit" class="btn solid">Create</button>
+      </form>
+      <div id="playlists-list"><p class="meta">Loading...</p></div>
+    </div>
+
+    <button class="btn solid" id="account-sign-out" data-sign-out style="width:100%; justify-content:center; margin-top:30px;">Sign Out</button>
+  </div>
+
+</section>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="library.js" defer></script>
+<script src="account.js" defer></script>
+</body>
+</html>

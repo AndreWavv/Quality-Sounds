@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin — Quality Sounds</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* ===== Delivery files (what buyers get after paying) ===== */
+  .field-hint { font-family: var(--mono); font-size: 0.68rem; color: var(--grey); margin-top: 6px; line-height: 1.5; }
+  .delivery-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+  }
+  .delivery-chip { padding: 4px 10px; border-radius: 100px; border: 1px solid var(--hairline); color: var(--grey); }
+  .delivery-chip.ok { border-color: rgba(107,255,184,0.5); color: #6BFFB8; }
+  .delivery-chip.missing { border-color: rgba(255,107,107,0.5); color: #FF6B6B; }
+  .delivery-toggle {
+    background: none;
+    border: 1px solid var(--hairline);
+    border-radius: 100px;
+    padding: 4px 12px;
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    cursor: pointer;
+  }
+  .delivery-toggle:hover { border-color: var(--purple-bright); }
+  .delivery-panel { margin-top: 14px; display: grid; gap: 12px; }
+  .delivery-row {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--hairline);
+  }
+  .delivery-row-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-family: var(--mono); font-size: 0.74rem; }
+  .delivery-row-head strong { color: var(--white); }
+  .delivery-state { color: var(--grey); overflow-wrap: anywhere; }
+  .delivery-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .delivery-controls input[type="file"] { flex: 1 1 200px; min-width: 0; font-family: var(--mono); font-size: 0.7rem; color: var(--grey); }
+  .delivery-controls input[type="url"] {
+    flex: 1 1 200px;
+    min-width: 0;
+    background: var(--charcoal);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    color: var(--white);
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+  .delivery-controls button {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    cursor: pointer;
+  }
+  .delivery-controls button:hover { border-color: var(--purple-bright); }
+  .delivery-controls button:disabled { opacity: 0.5; cursor: wait; }
+  .delivery-msg { font-family: var(--mono); font-size: 0.68rem; color: var(--purple-bright); min-height: 1em; }
+</style>
+</head>
+<body>
+
+<button class="auth-trigger" data-open-auth data-auth-label>Sign In</button>
+
+<div class="auth-modal" id="auth-modal">
+  <div class="auth-modal-card">
+    <button class="beat-info-close" id="auth-close" aria-label="Close">✕</button>
+    <div id="auth-tabs" class="auth-tabs">
+      <button type="button" id="auth-tab-login" class="auth-tab active">Login</button>
+      <button type="button" id="auth-tab-signup" class="auth-tab">Sign Up</button>
+    </div>
+    <p class="auth-error" id="auth-error"></p>
+    <form id="auth-form-login" class="auth-form">
+      <div class="field">
+        <label for="login-email">Email Address</label>
+        <input type="email" id="login-email" required>
+      </div>
+      <div class="field auth-pw-field">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" required>
+        <button type="button" class="auth-pw-toggle" data-for="login-password">👁</button>
+      </div>
+      <button type="submit" class="btn solid" style="width:100%; justify-content:center;">Sign In</button>
+    </form>
+    <form id="auth-form-signup" class="auth-form" style="display:none;">
+      <div class="field">
+        <label for="signup-email">Email Address</label>
+        <input type="email" id="signup-email" required>
+      </div>
+      <div class="field auth-pw-field">
+        <label for="signup-password">Password</label>
+        <input type="password" id="signup-password" required minlength="6">
+        <button type="button" class="auth-pw-toggle" data-for="signup-password">👁</button>
+      </div>
+      <button type="submit" class="btn solid" style="width:100%; justify-content:center;">Sign Up</button>
+    </form>
+    <div id="auth-otp-screen" class="auth-otp-screen" style="display:none;">
+      <div class="auth-otp-icon">✉</div>
+      <h4>Check your email</h4>
+      <p class="meta" style="text-align:center;">We sent a confirmation link to <span id="auth-otp-email"></span> — click it, then come back and sign in.</p>
+      <button type="button" class="auth-otp-resend" id="auth-otp-resend">Didn't get it? Resend</button>
+    </div>
+  </div>
+</div>
+
+<a href="index.html" class="admin-back-link">← Back to Site</a>
+
+<header class="page-head">
+  <div class="hero-eyebrow">Admin</div>
+  <h1>Upload</h1>
+  <p>Beats and mixing/mastering references — real accounts, real storage.</p>
+</header>
+
+<section class="form-section" style="padding-top: 0; max-width: 720px;">
+
+  <div id="admin-signed-out" style="text-align:center; display:none;">
+    <p class="meta">Sign in above with an admin account to continue.</p>
+  </div>
+
+  <div id="admin-no-access" style="text-align:center; display:none;">
+    <p class="meta">You're signed in, but this account doesn't have admin access.</p>
+  </div>
+
+  <div id="admin-loading" style="text-align:center;">
+    <p class="meta">Checking access...</p>
+  </div>
+
+  <div id="admin-content" style="display:none;">
+    <div class="section-label">Upload a Beat</div>
+    <form id="admin-beat-form">
+      <div class="field">
+        <label for="beat-title">Track Title</label>
+        <input type="text" id="beat-title" required>
+      </div>
+      <div class="field">
+        <label for="beat-genre">Genre</label>
+        <select id="beat-genre">
+          <option value="trap">Trap</option>
+          <option value="rnb">R&amp;B</option>
+          <option value="indie-pop">Indie Pop</option>
+          <option value="2000s-swag">2000's Swag</option>
+          <option value="cinematic">Cinematic</option>
+          <option value="house">House</option>
+          <option value="synthwave">Synthwave</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="beat-bpm">BPM</label>
+        <input type="number" id="beat-bpm" min="1" max="300">
+      </div>
+      <div class="field">
+        <label for="beat-key">Key</label>
+        <input type="text" id="beat-key" placeholder="e.g. F Minor">
+      </div>
+      <div class="field">
+        <label for="beat-mp3-price">MP3 Lease Price ($)</label>
+        <input type="number" id="beat-mp3-price" min="1" step="1" required>
+      </div>
+      <div class="field">
+        <label for="beat-wav-price">WAV Lease Price ($)</label>
+        <input type="number" id="beat-wav-price" min="1" step="1" required>
+      </div>
+      <div class="field">
+        <label for="beat-stems-price">Stems Lease Price ($)</label>
+        <input type="number" id="beat-stems-price" min="1" step="1" required>
+      </div>
+      <div class="field">
+        <label for="beat-cover">Cover Art</label>
+        <input type="file" id="beat-cover" accept="image/*">
+      </div>
+      <div class="field">
+        <label for="beat-audio">Audio File (preview)</label>
+        <input type="file" id="beat-audio" accept="audio/*">
+        <p class="field-hint">Public: anyone can play this on the site. Use a tagged or shortened version.</p>
+      </div>
+
+      <div class="section-label" style="margin: 36px 0 14px;">Files buyers get (private)</div>
+      <p class="field-hint" style="margin: 0 0 18px;">Only people who paid can download these. Each file can be up to 50 MB here. For anything bigger (usually stems), leave it empty and paste a Google Drive or Dropbox link for it under Your Beats after uploading.</p>
+      <div class="field">
+        <label for="beat-deliver-mp3">Full MP3 (all leases)</label>
+        <input type="file" id="beat-deliver-mp3" accept=".mp3,audio/mpeg">
+      </div>
+      <div class="field">
+        <label for="beat-deliver-wav">WAV (WAV and Stems leases)</label>
+        <input type="file" id="beat-deliver-wav" accept=".wav,audio/wav,audio/x-wav">
+      </div>
+      <div class="field">
+        <label for="beat-deliver-stems">Stems ZIP (Stems lease)</label>
+        <input type="file" id="beat-deliver-stems" accept=".zip,.rar,.7z,application/zip">
+      </div>
+
+      <button type="submit" class="btn solid">Upload Beat</button>
+      <p class="meta" id="beat-upload-status" style="margin-top: 10px; display: none;"></p>
+    </form>
+
+    <div style="margin-top: 60px;">
+      <div class="section-label">Upload a Mixing/Mastering Reference</div>
+      <form id="admin-reference-form">
+        <div class="field">
+          <label for="ref-title">Title</label>
+          <input type="text" id="ref-title" placeholder="e.g. Hip Hop" required>
+        </div>
+        <div class="field">
+          <label for="ref-genre-label">Genre Label</label>
+          <input type="text" id="ref-genre-label" placeholder="Shown on the card">
+        </div>
+        <div class="field">
+          <label for="ref-audio">Audio File</label>
+          <input type="file" id="ref-audio" accept="audio/*" required>
+        </div>
+        <button type="submit" class="btn solid">Upload Reference</button>
+        <p class="meta" id="ref-upload-status" style="margin-top: 10px; display: none;"></p>
+      </form>
+    </div>
+
+    <div style="margin-top: 60px;">
+      <div class="section-label">Your Beats</div>
+      <p class="field-hint" style="margin: -34px 0 20px;">Red means buyers of that lease can't download that file yet. Press Manage files to add it.</p>
+      <div id="admin-beat-list"><p class="meta">Loading...</p></div>
+    </div>
+  </div>
+
+</section>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="auth.js" defer></script>
+<script src="admin.js" defer></script>
+</body>
+</html>
