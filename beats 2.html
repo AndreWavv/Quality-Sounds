@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beats — Quality Sounds</title>
+<meta name="description" content="Browse and license beats produced by Andre.Wavv.">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* Genre rings: each filter pill gets a dot in its ring's color, so the
+     pills double as the color key for the rings in the scene. */
+  .galaxy-section .pill[data-genre]:not([data-genre="all"])::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: 1px;
+    background: var(--ring-color);
+    box-shadow: 0 0 8px var(--ring-color);
+  }
+  .galaxy-engage-hint { white-space: nowrap; }
+  /* Performance: cards riding the rings skip the frosted-glass blur. Blurring
+     15 cards over a moving video and glow every frame is very expensive and
+     was slowing the whole page. A more solid card looks the same at this size. */
+  #galaxy-viewport .cloud-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: rgba(10, 10, 14, 0.9);
+  }
+  /* Shown in the scene only if the 3D library can't load. */
+  .galaxy-scene-message {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 6;
+    margin: 0;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--white);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="social-sidebar">
+  <a href="https://www.instagram.com/andre.wavv/" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Instagram" title="Instagram">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>
+  </a>
+  <a href="https://www.tiktok.com/@andre.wavv" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="TikTok" title="TikTok">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.4 2.3 1.9 3.9 4 4.2v3.1c-1.5 0-3-.5-4-1.3v5.6a5.2 5.2 0 1 1-5.2-5.2c.3 0 .6 0 .9.1v3.1a2.1 2.1 0 1 0 1.5 2V3h2.8z"/></svg>
+  </a>
+  <a href="https://www.youtube.com/@Andre.Wavvvv/videos" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="YouTube" title="YouTube">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9.3l5 2.7-5 2.7V9.3z" fill="currentColor" stroke="none"/></svg>
+  </a>
+  <a href="https://www.twitch.tv/andredotwav" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Twitch" title="Twitch">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 3h16v11l-4 4h-4l-3 3v-3H4V3z"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="16" y1="7" x2="16" y2="11"/></svg>
+  </a>
+</div>
+
+<canvas id="nebula-bg"></canvas>
+
+<button class="auth-trigger" data-open-auth data-auth-label>Sign In</button>
+
+<div class="auth-modal" id="auth-modal">
+  <div class="auth-modal-card">
+    <button class="beat-info-close" id="auth-close" aria-label="Close">✕</button>
+
+    <div id="auth-tabs" class="auth-tabs">
+      <button type="button" id="auth-tab-login" class="auth-tab active">Login</button>
+      <button type="button" id="auth-tab-signup" class="auth-tab">Sign Up</button>
+    </div>
+
+    <p class="auth-error" id="auth-error"></p>
+
+    <form id="auth-form-login" class="auth-form">
+      <div class="field">
+        <label for="login-email">Email Address</label>
+        <input type="email" id="login-email" required>
+      </div>
+      <div class="field auth-pw-field">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" required>
+        <button type="button" class="auth-pw-toggle" data-for="login-password">👁</button>
+      </div>
+      <button type="submit" class="btn solid" style="width:100%; justify-content:center;">Sign In</button>
+    </form>
+
+    <form id="auth-form-signup" class="auth-form" style="display:none;">
+      <div class="field">
+        <label for="signup-email">Email Address</label>
+        <input type="email" id="signup-email" required>
+      </div>
+      <div class="field auth-pw-field">
+        <label for="signup-password">Password</label>
+        <input type="password" id="signup-password" required minlength="6">
+        <button type="button" class="auth-pw-toggle" data-for="signup-password">👁</button>
+      </div>
+      <button type="submit" class="btn solid" style="width:100%; justify-content:center;">Sign Up</button>
+    </form>
+
+    <div id="auth-otp-screen" class="auth-otp-screen" style="display:none;">
+      <div class="auth-otp-icon">✉</div>
+      <h4>Check your email</h4>
+      <p class="meta" style="text-align:center;">We sent a confirmation link to <span id="auth-otp-email"></span> — click it, then come back and sign in.</p>
+      <button type="button" class="auth-otp-resend" id="auth-otp-resend">Didn't get it? Resend</button>
+    </div>
+  </div>
+</div>
+
+<nav class="nav" id="site-nav">
+  <div class="nav-trigger"><span class="nav-glyph">&#119070;</span></div>
+  <div class="nav-links">
+    <a href="index.html" class="nav-item" style="--flip-w: 68px;">
+      <span class="nav-flip">
+        <span class="nav-face nav-face-icon"><svg viewBox="0 0 24 24"><defs><linearGradient id="y2k-star-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#86A6FF"/><stop offset="100%" stop-color="#C89EFF"/></linearGradient></defs><path fill="url(#y2k-star-grad)" d="M12 0C12.5 5.5 13 9 15 11C17 13 19.5 11.5 24 12C19.5 12.5 17 13 15 15C13 17 12.5 18.5 12 24C11.5 18.5 11 17 9 15C7 13 4.5 12.5 0 12C4.5 11.5 7 11 9 9C11 7 11.5 5.5 12 0Z"/></svg></span>
+        <span class="nav-face nav-face-text">Home</span>
+      </span>
+    </a>
+    <a href="beats.html" class="nav-item active" style="--flip-w: 68px;">
+      <span class="nav-flip">
+        <span class="nav-face nav-face-icon"><span class="nav-glyph">&#119070;</span></span>
+        <span class="nav-face nav-face-text">Beats</span>
+      </span>
+    </a>
+    <a href="mixing-mastering.html" class="nav-item" style="--flip-w: 168px;">
+      <span class="nav-flip">
+        <span class="nav-face nav-face-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="2" y="13" width="5" height="7" rx="1.5"/><rect x="17" y="13" width="5" height="7" rx="1.5"/></svg></span>
+        <span class="nav-face nav-face-text">Mixing &amp; Mastering</span>
+      </span>
+    </a>
+    <a href="index.html#about" class="nav-item" style="--flip-w: 76px;">
+      <span class="nav-flip">
+        <span class="nav-face nav-face-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg></span>
+        <span class="nav-face nav-face-text">About</span>
+      </span>
+    </a>
+    <a href="mixing-mastering.html#contact" class="nav-item" style="--flip-w: 84px;">
+      <span class="nav-flip">
+        <span class="nav-face nav-face-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
+        <span class="nav-face nav-face-text">Contact</span>
+      </span>
+    </a>
+  </div>
+  <div class="nav-tubelight" id="nav-tubelight"></div>
+</nav>
+
+<button class="theme-toggle" id="theme-toggle" aria-label="Toggle day/night theme" title="Toggle day/night">
+  <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8" stroke-linecap="round"/></svg>
+  <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>
+</button>
+
+<header class="page-head">
+  <div class="blob blob-blue" style="width:300px;height:300px;top:20%;right:10%;"></div>
+  <div class="hero-eyebrow">Catalog</div>
+  <h1>Beats</h1>
+  <p>Every beat below is available to preview and license instantly.</p>
+</header>
+
+<section class="galaxy-section">
+  <div class="filters">
+    <button class="pill active" data-genre="all">All Genres</button>
+    <button class="pill" data-genre="trap" style="--ring-color: #FF6B6B;">Trap</button>
+    <button class="pill" data-genre="rnb" style="--ring-color: #9D5CFF;">R&amp;B</button>
+    <button class="pill" data-genre="indie-pop" style="--ring-color: #6BFFB8;">Indie Pop</button>
+    <button class="pill" data-genre="2000s-swag" style="--ring-color: #FFE66B;">2000's Swag</button>
+    <button class="pill" data-genre="cinematic" style="--ring-color: #6B9BFF;">Cinematic</button>
+    <button class="pill" data-genre="house" style="--ring-color: #FF6BD6;">House</button>
+    <button class="pill" data-genre="synthwave" style="--ring-color: #00E5FF;">Synthwave</button>
+  </div>
+
+  <p class="galaxy-hint" id="galaxy-hint">Drag to look around · Scroll to zoom · Hold a card to pause and scrub its ring</p>
+
+  <div class="galaxy-wrap" data-lenis-prevent data-theme="day" id="cloud-scene-wrap">
+    <video class="cloud-video" id="cloud-video-day" autoplay loop muted playsinline src="clouds-day.mp4"></video>
+    <video class="cloud-video cloud-video-night" id="cloud-video-night" autoplay loop muted playsinline src="clouds-night.mp4"></video>
+    <div class="cloud-stars" id="cloud-stars"></div>
+    <div class="cloud-sunbeams"></div>
+    <div class="cloud-grain"></div>
+    <div class="cloud-vignette"></div>
+    <div id="galaxy-viewport" class="galaxy-viewport"></div>
+    <div class="galaxy-flash" id="galaxy-flash"></div>
+    <div class="galaxy-engage-hint" id="galaxy-engage-hint">Click to look around &amp; zoom</div>
+    <div class="galaxy-empty-hint" id="galaxy-empty-hint"></div>
+
+    <div class="checkout-screen" id="checkout-screen">
+      <div class="checkout-screen-card">
+        <button class="beat-info-close" id="beat-info-close" aria-label="Close">✕</button>
+
+        <span class="beat-genre" id="bi-genre">Trap</span>
+        <h4 id="bi-title">Track Title</h4>
+        <span class="meta" id="bi-meta">140 BPM · F Minor</span>
+
+        <div class="license-options" id="bi-license-options">
+          <button type="button" class="license-option active" data-tier="mp3">
+            <span class="license-name">MP3 Lease</span>
+            <span class="license-price">$30</span>
+          </button>
+          <button type="button" class="license-option" data-tier="wav">
+            <span class="license-name">WAV Lease</span>
+            <span class="license-price">$75</span>
+          </button>
+          <button type="button" class="license-option" data-tier="stems">
+            <span class="license-name">Stems Lease</span>
+            <span class="license-price">$100</span>
+          </button>
+        </div>
+
+        <div class="preview-row">
+          <button class="preview-play-btn beat-play" id="bi-play" data-name="" aria-label="Preview"><span class="btn-preview-icon" data-icon><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg></span></button>
+          <canvas class="preview-waveform" id="bi-waveform" width="220" height="32"></canvas>
+        </div>
+
+        <div class="bi-actions-row">
+          <button type="button" class="bi-icon-btn" id="bi-like" aria-label="Like">🤍 <span id="bi-like-count">0</span></button>
+          <button type="button" class="bi-icon-btn" id="bi-add-playlist" aria-label="Add to playlist">➕ Playlist</button>
+        </div>
+        <label class="fav-toggle" id="bi-favorite-wrap" style="margin-top: 10px;">
+          <input type="checkbox" class="fav-checkbox" id="bi-favorite">
+          <div class="fav-pill">
+            <span class="fav-label">FAVORITE</span>
+            <span class="fav-star"><svg viewBox="0 0 24 24"><defs><linearGradient id="fav-star-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#86A6FF"/><stop offset="100%" stop-color="#C89EFF"/></linearGradient></defs><path fill="url(#fav-star-grad)" d="M12 0C12.5 5.5 13 9 15 11C17 13 19.5 11.5 24 12C19.5 12.5 17 13 15 15C13 17 12.5 18.5 12 24C11.5 18.5 11 17 9 15C7 13 4.5 12.5 0 12C4.5 11.5 7 11 9 9C11 7 11.5 5.5 12 0Z"/></svg></span>
+          </div>
+        </label>
+
+        <!-- Contract sits directly above the checkout button, in its own
+             scrollable box, on the same screen — not hidden behind a
+             separate modal you have to click into first. -->
+        <div class="checkout-contract-block">
+          <div class="section-label" style="padding:0;">License Agreement — <span id="agreement-tier-label">MP3 Lease</span> (<span id="agreement-price-label">$30</span>)</div>
+          <pre id="agreement-text" class="checkout-contract-scrollbox"></pre>
+          <div class="field">
+            <label for="agreement-name">Type your full legal name to sign</label>
+            <input type="text" id="agreement-name" placeholder="Full legal name" autocomplete="name">
+          </div>
+          <label class="license-agree-row">
+            <input type="checkbox" id="agreement-checkbox">
+            I have read and agree to the terms above.
+          </label>
+        </div>
+
+        <p class="bi-warning">THIS BEAT IS NOT FREE. YOU NEED TO BUY A LICENSE IN ORDER TO UPLOAD ON ANY STREAMING SERVICES.</p>
+        <button type="button" class="btn solid" id="checkout-buy" disabled style="margin-top: 10px; width: 100%; justify-content: center;"><span id="checkout-buy-label">Confirm &amp; Checkout</span> — <span id="bi-selected-price">$30</span></button>
+
+        <!-- Deliberately plain .btn (not .btn.solid) so this can never
+             again be visually confused for the actual checkout button —
+             that exact confusion was the root cause of "buy just takes
+             me to the inquiry section". -->
+        <div class="bi-exclusive-card">
+          <div class="bi-exclusive-title">Want exclusive rights instead?</div>
+          <p class="meta">Full ownership, negotiated directly — no fixed price.</p>
+          <a href="#" id="bi-exclusive-inquire" class="btn" style="width:100%; justify-content:center; margin-top: 10px;">Email to Inquire</a>
+          <button type="button" id="bi-exclusive-copy" class="bi-exclusive-copy">Or copy: andre.wavbusiness@gmail.com</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="simple-grid-section">
+  <div class="section-label">Browse the Catalog</div>
+  <p class="meta" style="max-width: 500px; margin-bottom: 20px;">Filter by genre, browse the results — a plain, reliable way to find and buy a beat.</p>
+  <div class="catalog-filter-tabs" id="catalog-filter-tabs"></div>
+  <div class="simple-grid" id="simple-grid"><p class="meta">Loading beats...</p></div>
+</section>
+
+
+<div class="ticker" data-words="Trap,R&amp;B,Indie Pop,2000's Swag,Cinematic,House,Synthwave"></div>
+
+<section id="licensing">
+  <div style="padding: 60px 5vw 0;" class="section-label">Licensing</div>
+  <div class="tiers">
+    <div class="tier">
+      <div class="tier-name">MP3 Lease</div>
+      <div class="tier-price">Starting at $25</div>
+      <ul>
+        <li>MP3 file</li>
+        <li>Up to 30,000 streams, 2,000 downloads</li>
+        <li>1 music video</li>
+        <li>Live performances for profit</li>
+        <li>Credit required: "Prod. Andre.Wavv"</li>
+      </ul>
+    </div>
+    <div class="tier featured">
+      <div class="tier-name">WAV Lease</div>
+      <div class="tier-price">Starting at $65</div>
+      <ul>
+        <li>MP3 + WAV files</li>
+        <li>Up to 100,000 streams, 5,000 downloads</li>
+        <li>2 music videos</li>
+        <li>Live performances for profit</li>
+        <li>Credit required: "Prod. Andre.Wavv"</li>
+      </ul>
+    </div>
+    <div class="tier">
+      <div class="tier-name">Stems Lease</div>
+      <div class="tier-price">Starting at $90</div>
+      <ul>
+        <li>MP3 + stems + WAV files</li>
+        <li>Up to 250,000 streams, 10,000 downloads</li>
+        <li>3 music videos</li>
+        <li>Live performances for profit</li>
+        <li>Credit required: "Prod. Andre.Wavv"</li>
+      </ul>
+    </div>
+  </div>
+  <p class="licensing-exclusive-note">All leases are 2-year, non-exclusive licenses — pricing is per beat. Want exclusive rights instead? <a href="mailto:andre.wavbusiness@gmail.com">Email to discuss terms →</a></p>
+</section>
+
+<section class="grid-section" style="padding-top: 0;">
+  <div class="section-label">Something Specific?</div>
+  <div class="bento">
+    <div class="card span-2">
+      <div>
+        <span class="card-tag">Inquiry</span>
+        <h3>Custom Beat Requests</h3>
+        <p>Have a certain sound, reference track, or vibe in mind that's not in the catalog? Send over the details and a custom instrumental can be built to match.</p>
+        <form id="custom-inquiry-form" style="margin-top: 20px;">
+          <div class="field">
+            <label for="ci-name">Name</label>
+            <input type="text" id="ci-name" required>
+          </div>
+          <div class="field">
+            <label for="ci-email">Email</label>
+            <input type="email" id="ci-email" required>
+          </div>
+          <div class="field">
+            <label for="ci-description">Project details</label>
+            <textarea id="ci-description" placeholder="Genre, reference tracks, mood, deadline..." required></textarea>
+          </div>
+          <div class="field">
+            <label for="ci-deal">Deal preference</label>
+            <select id="ci-deal">
+              <option value="standard">Standard (work-for-hire + royalty split)</option>
+              <option value="not_sure">Not sure yet — let's discuss</option>
+            </select>
+          </div>
+          <button type="submit" class="btn solid">Send Inquiry</button>
+          <p class="meta" id="ci-status" style="margin-top: 10px; display: none;"></p>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-mark">Quality Sounds</div>
+  <div class="footer-links">
+    <a href="beats.html">Beats</a>
+    <a href="mixing-mastering.html">Mixing/Mastering</a>
+    <a href="mixing-mastering.html#contact">Contact</a>
+  </div>
+</footer>
+
+<div class="floating-player" id="floating-player">
+  <button class="fp-close" id="fp-close" aria-label="Stop preview">✕</button>
+  <div class="fp-cover" id="fp-cover">♫</div>
+  <div class="fp-name" id="fp-name">Track Name</div>
+  <div class="fp-seek-row">
+    <div class="fp-seek-bar" id="fp-seek-bar">
+      <div class="fp-seek-fill" id="fp-seek-fill"></div>
+      <div class="fp-seek-handle" id="fp-seek-handle"></div>
+    </div>
+    <div class="fp-time-row">
+      <span class="fp-time" id="fp-time-current">0:00</span>
+      <span class="fp-time" id="fp-time-duration">0:00</span>
+    </div>
+  </div>
+  <div class="fp-controls">
+    <button class="fp-ctrl" id="fp-shuffle" aria-label="Shuffle" title="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h4l7 12h4M17 3l3 3-3 3M3 18h4l3-5"/></svg></button>
+    <button class="fp-ctrl" id="fp-prev" aria-label="Previous" title="Previous"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM19 5v14l-9-7z"/></svg></button>
+    <button class="fp-ctrl fp-ctrl-play" id="fp-playpause" aria-label="Play/Pause"><span id="fp-playpause-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg></span></button>
+    <button class="fp-ctrl" id="fp-next" aria-label="Next" title="Next"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM5 5v14l9-7z"/></svg></button>
+    <button class="fp-ctrl" id="fp-repeat" aria-label="Repeat" title="Repeat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M17 2l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="auth.js" defer></script>
+<script src="library.js" defer></script>
+<!-- three.js + CSS3DRenderer, each with a backup CDN in case the first
+     one is blocked or down (that's what caused the grey screen on a
+     phone during the rings preview). -->
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script>window.THREE || document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"><\/script>');</script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
+<script>(window.THREE && THREE.CSS3DRenderer) || document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"><\/script>');</script>
+<link rel="stylesheet" href="https://unpkg.com/lenis@1.3.25/dist/lenis.css">
+<script src="https://unpkg.com/lenis@1.3.25/dist/lenis.min.js"></script>
+<script src="https://unpkg.com/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://unpkg.com/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+<script src="nebula-bg.js"></script>
+<script src="waveform.js"></script>
+<script src="script.js"></script>
+<script src="parallax.js"></script>
+<script src="beats-galaxy.js"></script>
+</body>
+</html>
